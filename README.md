@@ -1,5 +1,7 @@
 ## Luminoso Tableau Web Data Connector
 
+**ALPHA** this connector is currently alpha and only useful for testing purposes. Use at own risk.
+
 This web data connector is designed to create a simple interface between Tableau Desktop and Luminoso Daylight.
 
 To use:
@@ -23,3 +25,5 @@ To use:
 > Click Update Now
 
 Currently the only working table is score-drivers. Others will be added shortly.
+
+Note: To get around CORS issues, this connector currently uses a free/not highly available CORS proxy [https://cors-anywhere.herokuapp.com/]. This could go up or down at any point and should be replaced with something better.  
