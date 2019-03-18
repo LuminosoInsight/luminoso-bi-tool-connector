@@ -293,7 +293,7 @@
     
     // Test urls, these are much faster when testing!
     // project_url = "https://analytics.luminoso.com/app/projects/p87t862f/prk3wg56"
-    lumi_token = "gVgsZAq03A6U6f3ZF9K4s2HJFFJmFFjt"
+    //lumi_token = "gVgsZAq03A6U6f3ZF9K4s2HJFFJmFFjt"
     //project_url = "http://dd4067d4.ngrok.io/analytics.luminoso.com/app/projects/p87t862f/prk3wg56"
     //project_url = "http://localhost:8889/analytics.luminoso.com/app/projects/p87t862f/prk3wg56"
     //project_url = "https://cors-anywhere.herokuapp.com/https://analytics.luminoso.com/app/projects/p87t862f/prk3wg56"
