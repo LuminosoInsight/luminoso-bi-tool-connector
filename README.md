@@ -1,7 +1,7 @@
 ## Luminoso Tableau Web Data Connector
 
 **ALPHA** this connector is currently alpha and only useful for testing purposes. Use at own risk.
->> This readme hosted at: https://luminosoinsight.github.io/luminoso-tableau/
+>> This readme hosted at: [https://luminosoinsight.github.io/luminoso-tableau/](https://luminosoinsight.github.io/luminoso-tableau/)
 
 This web data connector is designed to create a simple interface between Tableau Desktop and Luminoso Daylight.
 
@@ -12,7 +12,7 @@ To use:
 > Web Data Connector
 
 > Use the url:
-> https://luminosoinsight.github.io/luminoso-tableau/luminosoWDC.html
+> [https://luminosoinsight.github.io/luminoso-tableau/luminosoWDC.html](https://luminosoinsight.github.io/luminoso-tableau/luminosoWDC.html)
 
 > You should see a dialog pop-up.
 > Enter the url for your Luminoso Daylight project.
