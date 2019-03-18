@@ -9,7 +9,7 @@ To use:
 > Web Data Connector
 
 > Use the url:
-> [https://raw.githubusercontent.com/LuminosoInsight/luminoso-tableau/master/luminosoWDC.js]
+> https://luminosoinsight.github.io/luminoso-tableau/luminosoWDC.html
 
 > You should see a dialog pop-up.
 > Enter the url for your Luminoso Daylight project.
