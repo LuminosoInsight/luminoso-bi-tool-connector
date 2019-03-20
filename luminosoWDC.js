@@ -539,23 +539,7 @@
     console.log("connect data=" + lumi_data);
 
     project_url = lumi_data.lumi_url;
-    console.log("REAL URL=" + project_url);
-
     lumi_token = lumi_data.lumi_token;
-
-    // prepend the cors proxy until this is hosted on luminoso.com
-    project_url = "https://cors-anywhere.herokuapp.com/"+project_url
-    
-    // Test urls, these are much faster when testing!
-    // project_url = "https://analytics.luminoso.com/app/projects/p87t862f/prk3wg56"
-    //lumi_token = "gVgsZAq03A6U6f3ZF9K4s2HJFFJmFFjt"
-    //project_url = "http://dd4067d4.ngrok.io/analytics.luminoso.com/app/projects/p87t862f/prk3wg56"
-    //project_url = "http://localhost:8889/analytics.luminoso.com/app/projects/p87t862f/prk3wg56"
-    //project_url = "https://cors-anywhere.herokuapp.com/https://analytics.luminoso.com/app/projects/p87t862f/prk3wg56"
-    //project_url = "https://cors-anywhere.herokuapp.com/https://analytics.luminoso.com/app/projects/p87t862f/prsfdrn2"
-    
-    // https://analytics.luminoso.com/app/projects/p87t862f/prsfdrn2
-    //lumi_token = "gVgsZAq03A6U6f3ZF9K4s2HJFFJmFFjt"
 
     console.log("proj_url=" + project_url);
 
