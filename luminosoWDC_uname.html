@@ -1,5 +1,5 @@
-<head>
-    <title>Luminoso Daylight Data Feed</title>
+∏<head>
+    <title>Luminoso Daylight Data Feed - Username Login</title>
     <meta http-equiv="Cache-Control" content="no-store" />
 
     <link href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous">
@@ -17,16 +17,17 @@
 
                   <form>
                 	<div class="form-inline">
-                		<label for="lumi-project-url" class="text-left">Luminoso Project URL</label>
-                        <input type="text" class="form-control" id="lumi-project-url" value="">
-                        <br/>
-                        <span>&mdash;<span>
+                		<label for="lumi-project-url" class="text-center">Luminoso Project URL</label>
+                		<input type="text" class="form-control" id="lumi-project-url" value="https://analytics.luminoso.com/app/projects/p87t862f/prsfdrn2">
                     </div>
                     <div class="form-inline">
-                        <label for="luminoso-token" class="text-left">Luminoso Token</label>
-                        <input type="text" class="form-control" id="lumi-token" value="">
-
-                	</div>
+                        <label for="luminoso-username">Luminoso Username</label>
+                        <input type="text" class="form-control" id="lumi-username" value="wharter@luminoso.com">
+                    </div>
+                    <div class="form-inline">
+                        <label for="luminoso-password">Luminoso Password</label>
+                        <input type="password" class="form-control" id="lumi-password" value="">
+                    </div>
                 </form>
 
                 <button type="button" id="submitButton" class="btn btn-success" style="margin: 10px;">Get Luminoso Schema</button>
