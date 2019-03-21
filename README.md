@@ -10,9 +10,12 @@ To use:
 > Run Tableau Desktop
 > Choose Connect/To A Server...
 > Web Data Connector
-
-> Use the url:
-> [https://luminosoinsight.github.io/luminoso-tableau/luminosoWDC.html](https://luminosoinsight.github.io/luminoso-tableau/luminosoWDC.html)
+>
+> Use this url if you want to login with username and password:
+>>> [https://luminosoinsight.github.io/luminoso-tableau/luminosoWDC_uname.html](https://luminosoinsight.github.io/luminoso-tableau/luminosoWDC_uname.html)
+>
+> Use this url if you want to login with a token:
+>>> [https://luminosoinsight.github.io/luminoso-tableau/luminosoWDC.html](https://luminosoinsight.github.io/luminoso-tableau/luminosoWDC.html)
 
 > You should see a dialog pop-up.
 > Enter the url for your Luminoso Daylight project.
