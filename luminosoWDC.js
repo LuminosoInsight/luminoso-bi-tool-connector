@@ -940,11 +940,11 @@ $(document).ready(function() {
     // DEBUG:
     // Test urls, these are much faster when testing!
     // lumi_url_tmp = "https://analytics.luminoso.com/app/projects/p87t862f/prk3wg56"
-    lumi_token_tmp = "0Cr7-TIYLTEsynXW1wFiHTAOsUlUFX2h";
+    // lumi_token_tmp = "0Cr7-TIYLTEsynXW1wFiHTAOsUlUFX2h";
     // lumi_url_tmp = "http://localhost:8889/analytics.luminoso.com/app/projects/p87t862f/prk3wg56"
     // lumi_url_tmp = "https://analytics.luminoso.com/app/projects/p87t862f/prk3wg56"
-    lumi_url_tmp =
-      "https://analytics.luminoso.com/app/projects/p87t862f/prsfdrn2";
+    // lumi_url_tmp =
+    //  "https://analytics.luminoso.com/app/projects/p87t862f/prsfdrn2";
 
     // https://analytics.luminoso.com/app/projects/p87t862f/prsfdrn2
     // "0Cr7-TIYLTEsynXW1wFiHTAOsUlUFX2h"
