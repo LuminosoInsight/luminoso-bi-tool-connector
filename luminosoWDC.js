@@ -142,10 +142,71 @@
         columns: doc_cols
       };
 
-      schemaCallback([docTable, scoreDriverTable]);
+      // Schema for score_driver table
+      var skt_cols = [
+        {
+          id: "term",
+          dataType: tableau.dataTypeEnum.string
+        },
+        {
+          id: "subset_name",
+          dataType: tableau.dataTypeEnum.string
+        },
+        {
+          id: "subset_value",
+          dataType: tableau.dataTypeEnum.string
+        },
+        {
+          id: "exact_match",
+          dataType: tableau.dataTypeEnum.float
+        },
+        {
+          id: "total_match",
+          dataType: tableau.dataTypeEnum.float
+        },
+        {
+          id: "conceptual_match",
+          dataType: tableau.dataTypeEnum.float
+        },
+        {
+          id: "relevance",
+          dataType: tableau.dataTypeEnum.float
+        },
+        {
+          id: "sample_text_0",
+          dataType: tableau.dataTypeEnum.string
+        },
+        {
+          id: "sample_text_0_id",
+          dataType: tableau.dataTypeEnum.string
+        },
+        {
+          id: "sample_text_1",
+          dataType: tableau.dataTypeEnum.string
+        },
+        {
+          id: "sample_text_1_id",
+          dataType: tableau.dataTypeEnum.string
+        },
+        {
+          id: "sample_text_2",
+          dataType: tableau.dataTypeEnum.string
+        },
+        {
+          id: "sample_text_2_id",
+          dataType: tableau.dataTypeEnum.string
+        }
+      ];
+
+      var skt_table = {
+        id: "subset_key_terms",
+        alias: "Subset Key Terms",
+        columns: skt_cols
+      };
+
+      schemaCallback([docTable, scoreDriverTable, skt_table]);
     }); // get_metadata
   }; // getSchema
-
 
   /**
    * Add url parameters
@@ -171,44 +232,6 @@
       encodeURIComponent(value);
     return url;
   }
-
-function luminoso_login(proj_api_v4, lumi_loginid, lumi_password, login_callback) {
-  console.log("api url=" + proj_api_v4);
-
-  /*
-  // create the url object
-  var url = proj_api_v4 + "/users/login/";
-  url = addParameterToURL(url,"username",lumi_loginid);
-  url = addParameterToURL(url,"password",lumi_password);
-
-  console.log("login url=" + url);
-
-  $.ajax({
-    url: url,
-    type: "GET",
-    dataType: "json",
-    success: function(resp_data) {
-      console.log("login SUCCESS");
-      console.log("login response = "+resp_data);
-      login_callback(resp_data);
-    },
-    error: function(xhr, status, text) {
-      console.log("ERROR getting metadata: " + status);
-      console.log("error text = " + text);
-
-      var response = $.parseJSON(xhr.responseText);
-      if (response) console.log(response.error);
-    },
-    beforeSend: setHeader
-  });
-
-  function setHeader(xhr) {
-    xhr.setRequestHeader("lumi", "lumi-cors");
-  }
-  */
- 
-} // luminoso login
-
 
   /**
    * Get project metadata
@@ -367,22 +390,20 @@ function luminoso_login(proj_api_v4, lumi_loginid, lumi_password, login_callback
    * used for the score drivers dataset
    *
    * @param {string} proj_api - the Dalight project url
-   * @param {int} md_idx - the index of the current metadata item these documents are for
+   * @param {string} lumi_token - the Daylight security token
+   * @param {string} pass_through_data - data to be passed to the callback
    * @param {list} [concept_list] - the list of concepts - comes directly from score driver output
-   * @param {int} idx - the indes of the current score driver these are fore
-   * @param {list} [sd_data] - the score_driver data
    * @param {function} doc_callback - the callback after the docs have been received
    *
-   * TODO: add lumi_token as a param, dangerous as used globally
    */
   function get_three_docs(
     proj_api,
-    md_idx,
+    lumi_token,
+    pass_through_data,
     concept_list,
-    idx,
-    sd_data,
     doc_callback
   ) {
+    console.log("GET THREE DOCS CONCEPTS = " + JSON.stringify(concept_list));
     // create the url object
     var url = proj_api + "/docs/";
 
@@ -403,7 +424,8 @@ function luminoso_login(proj_api_v4, lumi_loginid, lumi_password, login_callback
       success: function(resp_data) {
         console.log("3docs SUCCESS");
         //console.log("resp idx="+idx+"  "+JSON.stringify(concept_list));
-        doc_callback(idx, sd_data, md_idx, resp_data.result);
+        //doc_callback(idx, sd_data, md_idx, metadata, resp_data.result);
+        doc_callback(pass_through_data, resp_data.result);
       },
       error: function() {
         console.log("ERROR getting data");
@@ -566,6 +588,65 @@ function luminoso_login(proj_api_v4, lumi_loginid, lumi_password, login_callback
   }
 
   /**
+   * Get project match counts
+   *
+   * Description.
+   * Get the concept match counts
+   *
+   * @param {string} proj_api - the Daylight url
+   * @param {string} lumi_token  - the security token from the UI User settings/API tokens
+   * @param {function} mc_callback - call back after the data is received
+   *
+   */
+  function get_match_counts(
+    proj_api,
+    lumi_token,
+    ss_index,
+    ss_name,
+    ss_value,
+    mc_callback
+  ) {
+    // create the url object
+    var url = proj_api + "/concepts/match_counts";
+
+    console.log("metadata url=" + url);
+    console.log("lumi_token=" + lumi_token);
+
+    // create the params for the match_counts call
+    var params = {
+      filter: JSON.stringify([{ name: ss_name, values: [ss_value] }]),
+      concept_selector: JSON.stringify({ type: "top", limit: 100 })
+    };
+    Object.keys(params).forEach(function(key) {
+      url = addParameterToURL(url.toString(), key, params[key]);
+    });
+
+    $.ajax({
+      url: url,
+      type: "GET",
+      dataType: "json",
+      success: function(resp_data) {
+        console.log("match_counts SUCCESS");
+        console.log("mc= " + JSON.stringify(resp_data));
+        mc_callback(ss_index, ss_name, ss_value, resp_data);
+      },
+      error: function(xhr, status, text) {
+        console.log("ERROR getting metadata: " + status);
+        console.log("error text = " + text);
+
+        var response = $.parseJSON(xhr.responseText);
+        if (response) console.log(response.error);
+      },
+      beforeSend: setHeader
+    });
+
+    function setHeader(xhr) {
+      xhr.setRequestHeader("Authorization", "Token " + lumi_token);
+      xhr.setRequestHeader("lumi", "lumi-cors");
+    }
+  }
+
+  /**
    * Tableau WDC calls the getData function when a user presses update
    * The table name to retrieve is passed in the table_id
    */
@@ -597,30 +678,46 @@ function luminoso_login(proj_api_v4, lumi_loginid, lumi_password, login_callback
               var rows_complete = 0;
               // this is the actual data return
               // console.log("gsd Callback from got_score_drivers");
-              //console.log(JSON.stringify(sd_data));
+              console.log(JSON.stringify(sd_data[0]));
+
+              // setup the pass-through data for the three-docs call
+
               for (var idx = 0; idx < sd_data.length; idx++) {
+                // make a pt_data (pass_through) data object for each iteration
+                pt_data = {
+                  md_idx: md_idx,
+                  metadata: metadata,
+                  sd_data: sd_data,
+                  idx: 0
+                };
+
                 // do a second fetch for some sample docs
                 get_three_docs(
                   project_url,
-                  md_idx,
+                  lumi_token,
+                  pt_data,
+                  //md_idx,
+                  //metadata,
                   sd_data[idx].texts,
-                  idx,
-                  sd_data,
-                  function(idx_inner, sd_data, md_idx, doc_data) {
+                  //idx,
+                  //sd_data,
+                  //function(idx_inner, sd_data, md_idx, metadata, doc_data) {
+                  function(pt_data, doc_data) {
                     console.log("3ds callback from get_three_docs");
 
                     tableData.push({
-                      score_driver_name: sd_data[idx_inner].name,
-                      score_field: metadata[md_idx].name,
-                      exact_matches: sd_data[idx_inner].exact_match_count,
+                      score_driver_name: pt_data.sd_data[pt_data.idx].name,
+                      score_field: pt_data.metadata[pt_data.md_idx].name,
+                      exact_matches:
+                        pt_data.sd_data[pt_data.idx].exact_match_count,
                       conceptual_matches:
-                        sd_data[idx_inner].match_count -
-                        sd_data[idx_inner].exact_match_count,
-                      total_matches: sd_data[idx_inner].match_count,
-                      impact: sd_data[idx_inner].impact,
-                      confidence: sd_data[idx_inner].confidence,
-                      relevance: sd_data[idx_inner].relevance,
-                      importance: sd_data[idx_inner].importance,
+                        pt_data.sd_data[pt_data.idx].match_count -
+                        pt_data.sd_data[pt_data.idx].exact_match_count,
+                      total_matches: pt_data.sd_data[pt_data.idx].match_count,
+                      impact: pt_data.sd_data[pt_data.idx].impact,
+                      confidence: pt_data.sd_data[pt_data.idx].confidence,
+                      relevance: pt_data.sd_data[pt_data.idx].relevance,
+                      importance: pt_data.sd_data[pt_data.idx].importance,
                       sample_text_0: doc_data[0].text,
                       sample_text_0_id: doc_data[0].doc_id,
                       sample_text_1: doc_data[1].text,
@@ -633,7 +730,7 @@ function luminoso_login(proj_api_v4, lumi_loginid, lumi_password, login_callback
                     rows_complete++;
 
                     // append and callback when all rows are received
-                    if (rows_complete >= sd_data.length) {
+                    if (rows_complete >= pt_data.sd_data.length) {
                       table.appendRows(tableData);
 
                       console.log(
@@ -696,17 +793,146 @@ function luminoso_login(proj_api_v4, lumi_loginid, lumi_password, login_callback
         doneCallback();
       }); // get docs callback
     } // if docs table
+    else if (table["tableInfo"]["id"] == "subset_key_terms") {
+      // first get all the metadata
+      get_metadata(project_url, lumi_token, function(metadata) {
+        console.log("SUCCESS - got metadata for skt");
+        console.log("md[0] = " + JSON.stringify(metadata[0]));
+        var tableData = [];
+
+        // first build a list of metadata name->value key pairs to iterate
+        subset_terms = [];
+        for (var md_idx = 0; md_idx < metadata.length; md_idx++) {
+          // only use metadata subsets that have a list of values
+          if (metadata[md_idx].values != undefined) {
+            console.log("ss values = " + JSON.stringify(metadata[md_idx]));
+            for (
+              var ss_val_idx = 0;
+              ss_val_idx < metadata[md_idx]["values"].length;
+              ss_val_idx++
+            ) {
+              new_row = {
+                subset_name: metadata[md_idx].name,
+                type: metadata[md_idx].type,
+                subset_value: metadata[md_idx]["values"][ss_val_idx]["value"],
+                count: metadata[md_idx]["values"][ss_val_idx]["count"]
+              };
+              subset_terms.push(new_row);
+            }
+          }
+        }
+
+        // call get match_counts with zero index.
+        // this will be called again by get_three_docs callback with the next index
+        // once all the match_counts have been processed
+        console.log("ss=" + JSON.stringify(subset_terms[0]));
+        get_match_counts(
+          project_url,
+          lumi_token,
+          0,
+          subset_terms[0].subset_name,
+          subset_terms[0].subset_value,
+          process_match_counts
+        );
+
+        function process_match_counts(ss_idx, ss_name, ss_value, match_counts) {
+          console.log("GOT MATCH COUNTS_" + ss_name);
+          // console.log("GOT MATCH COUNTS_" + JSON.stringify(match_counts));
+          match_counts = match_counts["match_counts"];
+          console.log("GOT MCLEN" + match_counts.length);
+
+          var tableData = [];
+          pt_data = {
+            mc_idx: 0,
+            subset_terms: subset_terms,
+            ss_idx: ss_idx,
+            match_counts
+          };
+          // do a second fetch for some sample docs
+          get_three_docs(
+            project_url,
+            lumi_token,
+            pt_data,
+            [pt_data.match_counts[pt_data.mc_idx].name],
+            process_three_docs
+          );
+
+          function process_three_docs(pt_data, doc_data) {
+            //console.log("callback from get_three_docs");
+            console.log("ptd subset=" + pt_data.subset_terms[pt_data.ss_idx].subset_name);
+            //console.log("subset_terms="+JSON.stringify(pt_data.subset_terms[pt_data.ss_idx]));
+            //console.log("docs="+JSON.stringify(doc_data))
+            if (doc_data.length > 0) {
+              doc_0 = doc_data[0].text;
+              doc_0_id = doc_data[0].doc_id;
+            } else {
+              doc_0 = undefined;
+              doc_0_id = undefined;
+            }
+
+            new_row = {
+              subset_name: pt_data.subset_terms[pt_data.ss_idx].subset_name,
+              subset_value: pt_data.subset_terms[pt_data.ss_idx].subset_value,
+              term: pt_data.match_counts[pt_data.mc_idx].name,
+              exact_match:
+                pt_data.match_counts[pt_data.mc_idx].exact_match_count,
+              total_match: pt_data.match_counts[pt_data.mc_idx].match_count,
+              conceptual_match:
+                pt_data.match_counts[pt_data.mc_idx].match_count -
+                match_counts[pt_data.mc_idx].exact_match_count,
+              relevance: match_counts[pt_data.mc_idx].relevance,
+              sample_text_0: doc_0,
+              sample_text_0_id: doc_0_id
+            };
+            //console.log("ADDING NEW ROW = "+JSON.stringify(new_row))
+            tableData.push(new_row);
+
+            pt_data.mc_idx++;
+            if (pt_data.mc_idx < pt_data.match_counts.length) {
+              // get the next match_count set of documents
+              get_three_docs(
+                project_url,
+                lumi_token,
+                pt_data,
+                [pt_data.match_counts[pt_data.mc_idx].name],
+                process_three_docs
+              );
+            } else {
+              // done with that match_count, now get the next subset
+              next_idx = pt_data.ss_idx += 1;
+              if (next_idx < pt_data.subset_terms.length) {
+                console.log(
+                  "GET NEXT SUBSET=" +
+                    pt_data.subset_terms[next_idx].subset_name
+                );
+                get_match_counts(
+                  project_url,
+                  lumi_token,
+                  next_idx,
+                  pt_data.subset_terms[next_idx].subset_name,
+                  pt_data.subset_terms[next_idx].subset_value,
+                  process_match_counts
+                );
+              } else {
+                console.log("SKT DONE tdlen=" + tableData.length);
+                table.appendRows(tableData);
+                doneCallback();
+              } // done with last subset
+            }
+          } // process three docs callback;
+        } // process match counts callback
+      });
+    } // subset key terms table
   }; // getData
 
   tableau.registerConnector(luminosoConnector);
 })(); // register connectionName
 
 $(document).ready(function() {
-
-
   $("#submitButton").click(function() {
-
-    var lumi_url_tmp = $("#lumi-project-url").val().trim();
+    var lumi_url_tmp = $("#lumi-project-url")
+      .val()
+      .trim();
     var lumi_token_tmp = $("#lumi-token").val();
     var lumi_username_tmp = $("#lumi-username").val();
     var lumi_password_tmp = $("#lumi-password").val();
@@ -714,10 +940,11 @@ $(document).ready(function() {
     // DEBUG:
     // Test urls, these are much faster when testing!
     // lumi_url_tmp = "https://analytics.luminoso.com/app/projects/p87t862f/prk3wg56"
-    // lumi_token_tmp = "0Cr7-TIYLTEsynXW1wFiHTAOsUlUFX2h";
+    lumi_token_tmp = "0Cr7-TIYLTEsynXW1wFiHTAOsUlUFX2h";
     // lumi_url_tmp = "http://localhost:8889/analytics.luminoso.com/app/projects/p87t862f/prk3wg56"
     // lumi_url_tmp = "https://analytics.luminoso.com/app/projects/p87t862f/prk3wg56"
-    // lumi_url_tmp= "https://analytics.luminoso.com/app/projects/p87t862f/prsfdrn2";
+    lumi_url_tmp =
+      "https://analytics.luminoso.com/app/projects/p87t862f/prsfdrn2";
 
     // https://analytics.luminoso.com/app/projects/p87t862f/prsfdrn2
     // "0Cr7-TIYLTEsynXW1wFiHTAOsUlUFX2h"
@@ -736,58 +963,50 @@ $(document).ready(function() {
     // proxy_url = "https://cors-anywhere.herokuapp.com/";
     // proxy_url = "http://localhost:8080/";
     var proxy_url = "https://morning-anchorage-77576.herokuapp.com/";
-    api_url = proxy_url+api_url;
-    api_v4_url = proxy_url+api_v4_url;
+    api_url = proxy_url + api_url;
+    api_v4_url = proxy_url + api_v4_url;
     proj_apiv5 = proxy_url + proj_apiv5;
     proj_apiv4 = proxy_url + proj_apiv4;
 
     // if lumi_token isn't set, then probably came through the username way
-    if (!lumi_token_tmp)
-    {
-      if (lumi_username_tmp)
-      {
-        lumi_login(api_v4_url,lumi_username_tmp,lumi_password_tmp,function(token) {
+    if (!lumi_token_tmp) {
+      if (lumi_username_tmp) {
+        lumi_login(api_v4_url, lumi_username_tmp, lumi_password_tmp, function(
+          token
+        ) {
           tableau.log("GOT THE TOKEN!!!!");
-          tableau.log("token="+JSON.stringify(token));
+          tableau.log("token=" + JSON.stringify(token));
           lumi_token_tmp = token;
 
-          tableau_submit(proj_apiv5,lumi_token_tmp);
+          tableau_submit(proj_apiv5, lumi_token_tmp);
         });
-      }
-      else
-      {
+      } else {
         tableau.log("ERROR no token and no username. One or other must be set");
       }
+    } else {
+      tableau_submit(proj_apiv5, lumi_token_tmp);
     }
-    else
-    {
-      tableau_submit(proj_apiv5,lumi_token_tmp);
-    }
-
-
   }); // submit button click
 
   /**
    * Calls the tableau submit.
-   * 
+   *
    * Description.
    * This starts the whole process. It was split into a function because the
    * login process is async and calls it after it gets a token and if a token
    * is given in the UI then it simply calls this directly to kick off the connector
-   * 
+   *
    * @param {*} lumi_project_url - The Luminoso Daylight v5 project api url
    * @param {*} lumi_token  - The security token to use
    */
 
-  function tableau_submit(lumi_project_url,lumi_token) {
-
+  function tableau_submit(lumi_project_url, lumi_token) {
     var lumiDataObj = {
       lumi_url: lumi_project_url,
       lumi_token: lumi_token
     };
 
     tableau.log("lumi-url=" + lumiDataObj.lumi_url);
-
 
     tableau.connectionData = JSON.stringify(lumiDataObj);
     tableau.connectionName = "Luminoso Data";
@@ -798,19 +1017,23 @@ $(document).ready(function() {
 
   /**
    * Login to Luminoso Daylight and receive a token
-   * 
+   *
    * Description
    * This uses a v4 endpoint to login to the Daylight server and get a token.
    * The token will be used for the rest of the connections
-   * 
+   *
    * @param {*} proj_api_v4 | Login requires a v4 endpoint
    * @param {*} lumi_loginid | The login id
    * @param {*} lumi_password | The password the user typed at the prompt
    * @param {*} login_callback | The callback when this async function is called
    */
-  function lumi_login(proj_api_v4,lumi_loginid,lumi_password,login_callback)
-  {
-    tableau.log("LOGIN START...")
+  function lumi_login(
+    proj_api_v4,
+    lumi_loginid,
+    lumi_password,
+    login_callback
+  ) {
+    tableau.log("LOGIN START...");
 
     // create the url object
     var url = proj_api_v4 + "/user/login/";
@@ -824,16 +1047,16 @@ $(document).ready(function() {
       url: url,
       type: "POST",
       dataType: "json",
-      data:params,
+      data: params,
       success: function(resp_data) {
         tableau.log("login SUCCESS");
-        tableau.log("login response = "+resp_data);
-        login_callback(resp_data['result']['token']);
+        tableau.log("login response = " + resp_data);
+        login_callback(resp_data["result"]["token"]);
       },
       error: function(xhr, status, text) {
         tableau.log("ERROR on login: " + status);
         tableau.log("error text = " + text);
-        tableau.log("full error ="+JSON.stringify(xhr));
+        tableau.log("full error =" + JSON.stringify(xhr));
 
         var response = $.parseJSON(xhr.responseText);
         if (response) tableau.log(response.error);
@@ -847,7 +1070,12 @@ $(document).ready(function() {
 
     function addParameterToURL(url, param, value) {
       // console.log("addparam url=" + url);
-      tableau.log("encode of value for "+String(param)+" = "+String(encodeURIComponent(value)))
+      tableau.log(
+        "encode of value for " +
+          String(param) +
+          " = " +
+          String(encodeURIComponent(value))
+      );
       url =
         url +
         (url.split("?")[1] ? "&" : "?") +
@@ -856,8 +1084,5 @@ $(document).ready(function() {
         encodeURIComponent(value);
       return url;
     }
-    
   }
 }); // document ready
-
-
