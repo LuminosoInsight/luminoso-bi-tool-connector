@@ -846,8 +846,8 @@
             mc_idx: 0,
             subset_terms: subset_terms,
             ss_idx: ss_idx,
-            match_counts
-          };
+            match_counts:match_counts
+          }
           // do a second fetch for some sample docs
           get_three_docs(
             project_url,
