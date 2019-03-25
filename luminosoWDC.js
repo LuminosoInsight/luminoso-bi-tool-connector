@@ -117,7 +117,11 @@
         md_schema_idx < metadata.length;
         md_schema_idx++
       ) {
-        tableau.log("md item = "+metadata[md_schema_idx]['name']);
+        tableau.log(
+          "md item = |" +
+            metadata[md_schema_idx]["name"].replace(/\s+/g, "_") +
+            "|"
+        );
         md_type = tableau.dataTypeEnum.string;
         if (
           metadata[md_schema_idx]["type"] == "score" ||
@@ -130,7 +134,7 @@
 
         md_tmp = {
           // the name cannot have spaces
-          id: metadata[md_schema_idx]["name"],
+          id: metadata[md_schema_idx]["name"].replace(/\s+/g, "_"),
           dataType: md_type
         };
         //console.log("adding column = "+JSON.stringify(md_tmp))
@@ -205,7 +209,6 @@
         columns: skt_cols
       };
 
-
       // Schema for score_driver table
       var subsets_cols = [
         {
@@ -221,14 +224,46 @@
           dataType: tableau.dataTypeEnum.float
         }
       ];
+
       var subsets_table = {
         id: "subsets",
         alias: "Subsets Table",
         columns: subsets_cols
       };
 
-      schemaCallback([docTable, scoreDriverTable, skt_table, subsets_table]);
-    }); // get_metadata
+      var top_concept_assoc_cols = [
+        {
+          id: "concept_name",
+          dataType: tableau.dataTypeEnum.string
+        },
+        {
+          id: "assoc_name",
+          dataType: tableau.dataTypeEnum.string
+        },
+        {
+          id: "relevance",
+          dataType: tableau.dataTypeEnum.float
+        },
+        {
+          id: "association_score",
+          dataType: tableau.dataTypeEnum.float
+        }
+      ];
+
+      var top_concept_assoc_table = {
+        id: "top_concepts_assoc",
+        alias: "Top Concept Associations Table",
+        columns: top_concept_assoc_cols
+      };
+
+      schemaCallback([
+        docTable,
+        scoreDriverTable,
+        skt_table,
+        subsets_table,
+        top_concept_assoc_table
+      ]);
+    }); // get_metadata callback
   }; // getSchema
 
   /**
@@ -279,12 +314,119 @@
       success: function(resp_data) {
         console.log("metadata SUCCESS");
 
-        // subset names (as table data) cannot have spaces. Just change them here
-        for (var idx=0;idx<resp_data.result.length;idx++)
-        {
-          resp_data.result[idx].name = resp_data.result[idx].name.replace(/\s+/g, '-')
+        for (var idx = 0; idx < resp_data.result.length; idx++) {
+          resp_data.result[idx].name = resp_data.result[idx].name;
         }
         md_callback(resp_data.result);
+      },
+      error: function(xhr, status, text) {
+        console.log("ERROR getting metadata: " + status);
+        console.log("error text = " + text);
+
+        var response = $.parseJSON(xhr.responseText);
+        if (response) console.log(response.error);
+      },
+      beforeSend: setHeader
+    });
+
+    function setHeader(xhr) {
+      xhr.setRequestHeader("Authorization", "Token " + lumi_token);
+      xhr.setRequestHeader("lumi", "lumi-cors");
+    }
+  }
+
+  /**
+   * Get project concepts
+   *
+   * Description.
+   * Get the list of concepts for this project
+   *
+   * @param {string} proj_api - the Daylight url
+   * @param {string} lumi_token  - the security token from the UI User settings/API tokens
+   * @param {string} concept_type - "top" or "saved" (should probably just be a concept selector?)
+   * @param {function} concepts_callback - call back after the data is received
+   *
+   */
+  function get_concepts(proj_api, lumi_token, concept_type, concepts_callback) {
+    // create the url object
+    var url = proj_api + "/concepts/";
+    console.log("metadata url=" + url);
+    console.log("lumi_token=" + lumi_token);
+
+    // create the params for the get concepts call
+    var params = {
+      concept_selector: JSON.stringify({ type: concept_type })
+    };
+    Object.keys(params).forEach(function(key) {
+      url = addParameterToURL(url.toString(), key, params[key]);
+    });
+
+    $.ajax({
+      url: url,
+      type: "GET",
+      dataType: "json",
+      success: function(resp_data) {
+        console.log("get concepts SUCCESS");
+
+        console.log("concept0=" + JSON.stringify(resp_data.result[0]));
+
+        concepts_callback(resp_data.result);
+      },
+      error: function(xhr, status, text) {
+        console.log("ERROR getting concepts: " + status);
+        console.log("error text = " + text);
+
+        var response = $.parseJSON(xhr.responseText);
+        if (response) console.log(response.error);
+      },
+      beforeSend: setHeader
+    });
+
+    function setHeader(xhr) {
+      xhr.setRequestHeader("Authorization", "Token " + lumi_token);
+      xhr.setRequestHeader("lumi", "lumi-cors");
+    }
+  }
+
+  /**
+   * Get project concept associations
+   *
+   * Description.
+   * Get the concept associations for this project (top or saved)
+   *
+   * @param {string} proj_api - the Daylight url
+   * @param {string} lumi_token  - the security token from the UI User settings/API tokens
+   * @param {string} concept_type - "top" or "saved" (should probably just be a concept selector?)
+   * @param {function} concepts_callback - call back after the data is received
+   *
+   */
+  function get_concept_associations(
+    proj_api,
+    lumi_token,
+    concept_type,
+    concepts_callback
+  ) {
+    // create the url object
+    var url = proj_api + "/concepts/concept_associations";
+    console.log("metadata url=" + url);
+    console.log("lumi_token=" + lumi_token);
+
+    // create the params for the get concepts call
+    var params = {
+      concept_selector: JSON.stringify({ type: concept_type, limit: 25 })
+    };
+    Object.keys(params).forEach(function(key) {
+      url = addParameterToURL(url.toString(), key, params[key]);
+    });
+
+    $.ajax({
+      url: url,
+      type: "GET",
+      dataType: "json",
+      success: function(resp_data) {
+        console.log("concept assoc=" + JSON.stringify(resp_data));
+
+        concepts_callback(resp_data);
       },
       error: function(xhr, status, text) {
         console.log("ERROR getting metadata: " + status);
@@ -724,14 +866,12 @@
                   project_url,
                   lumi_token,
                   pt_data,
-                  //md_idx,
-                  //metadata,
                   sd_data[idx].texts,
-                  //idx,
-                  //sd_data,
-                  //function(idx_inner, sd_data, md_idx, metadata, doc_data) {
                   function(pt_data, doc_data) {
                     console.log("3ds callback from get_three_docs");
+                    if (pt_data.idx == 0) {
+                      console.log("doc=" + JSON.stringify(doc_data[0]));
+                    }
 
                     tableData.push({
                       score_driver_name: pt_data.sd_data[pt_data.idx].name,
@@ -811,8 +951,9 @@
               md_idx++
             ) {
               // remember, tableau cannot handle metadata naems with spaces. replace with '-'
-              new_row[doc_table[d_idx].metadata[md_idx].name.replace(/\s+/g, '-')] =
-                doc_table[d_idx].metadata[md_idx].value;
+              new_row[
+                doc_table[d_idx].metadata[md_idx].name.replace(/\s+/g, "_")
+              ] = doc_table[d_idx].metadata[md_idx].value;
             }
           }
 
@@ -875,8 +1016,8 @@
             mc_idx: 0,
             subset_terms: subset_terms,
             ss_idx: ss_idx,
-            match_counts:match_counts
-          }
+            match_counts: match_counts
+          };
           // do a second fetch for some sample docs
           get_three_docs(
             project_url,
@@ -888,7 +1029,9 @@
 
           function process_three_docs(pt_data, doc_data) {
             //console.log("callback from get_three_docs");
-            console.log("ptd subset=" + pt_data.subset_terms[pt_data.ss_idx].subset_name);
+            console.log(
+              "ptd subset=" + pt_data.subset_terms[pt_data.ss_idx].subset_name
+            );
             //console.log("subset_terms="+JSON.stringify(pt_data.subset_terms[pt_data.ss_idx]));
             //console.log("docs="+JSON.stringify(doc_data))
             if (doc_data.length > 0) {
@@ -915,7 +1058,9 @@
 
             new_row = {
               // remember tableau cannon handle metadata names with spaces, replace with -
-              subset_name: pt_data.subset_terms[pt_data.ss_idx].subset_name.replace(/\s+/g, '-'),
+              subset_name: pt_data.subset_terms[
+                pt_data.ss_idx
+              ].subset_name.replace(/\s+/g, "_"),
               subset_value: pt_data.subset_terms[pt_data.ss_idx].subset_value,
               term: pt_data.match_counts[pt_data.mc_idx].name,
               exact_match:
@@ -977,18 +1122,14 @@
         console.log("SUCCESS - got metadata for subsets");
         console.log("md[0] = " + JSON.stringify(metadata[0]));
         var tableData = [];
-        for (var idx=0;idx<metadata.length;idx++)
-        {
-          if (metadata[idx].values!=undefined)
-          {
-            for (var v_idx=0;v_idx<metadata[idx].values.length;v_idx++)
-            {
-              tableData.push(
-                {
-                  subset_name: metadata[idx].name.replace(/\s+/g, '-'),
-                  value: metadata[idx].values[v_idx].value,
-                  count: metadata[idx].values[v_idx].count
-                });
+        for (var idx = 0; idx < metadata.length; idx++) {
+          if (metadata[idx].values != undefined) {
+            for (var v_idx = 0; v_idx < metadata[idx].values.length; v_idx++) {
+              tableData.push({
+                subset_name: metadata[idx].name.replace(/\s+/g, "_"),
+                value: metadata[idx].values[v_idx].value,
+                count: metadata[idx].values[v_idx].count
+              });
             } // for list of values
           } // if list of values
         } // for metadata list
@@ -996,8 +1137,38 @@
         console.log("SUBSETS DONE tdlen=" + tableData.length);
         table.appendRows(tableData);
         doneCallback();
-      });  // subsets get metadata callback
+      }); // subsets get metadata callback
     } // subsets table
+    else if (table["tableInfo"]["id"] == "top_concepts_assoc") {
+      // get all the metadata
+      get_concept_associations(project_url, lumi_token, "top", function(
+        concept_assoc
+      ) {
+        console.log("SUCCESS - got assoc data");
+        //console.log("concept_assoc[0] = " + JSON.stringify(concept_assoc[0]));
+        console.log("num concepts=" + concept_assoc.length);
+        var tableData = [];
+        for (var idx = 0; idx < concept_assoc.length; idx++) {
+          for (
+            var a_idx = 0;
+            a_idx < concept_assoc[idx].associations.length;
+            a_idx++
+          ) {
+            tableData.push({
+              concept_name: concept_assoc[idx].name,
+              assoc_name: concept_assoc[idx].associations[a_idx].name,
+              relevance: concept_assoc[idx].associations[a_idx].relevance,
+              association_score:
+                concept_assoc[idx].associations[a_idx].association_score
+            }); // push
+            console.log("PUSH complete");
+          } // for assoc idx
+        } // for concepts idx
+        console.log("CONCEPT ASSOCIATIONS DONE len=" + tableData.length);
+        table.appendRows(tableData);
+        doneCallback();
+      }); // get concepts callback
+    } // if top_concepts_assoc
   }; // getData
 
   tableau.registerConnector(luminosoConnector);
@@ -1018,10 +1189,13 @@ $(document).ready(function() {
     // lumi_token_tmp = "0Cr7-TIYLTEsynXW1wFiHTAOsUlUFX2h";
     // lumi_url_tmp = "http://localhost:8889/analytics.luminoso.com/app/projects/p87t862f/prk3wg56"
     // lumi_url_tmp = "https://analytics.luminoso.com/app/projects/p87t862f/prk3wg56"
-    // lumi_url_tmp =
+    //lumi_url_tmp =
     //  "https://analytics.luminoso.com/app/projects/p87t862f/prsfdrn2";
     // lumi_url_tmp = "https://analytics.luminoso.com/app/projects/u22n473c/prgsqc5b"
     // lumi_token_tmp = "fGpZVIxEGxtRhd6CrnWRABt9oWv3890U"
+    lumi_url_tmp =
+      "https://analytics.luminoso.com/app/projects/j48f473w/prwx3z7n";
+    lumi_token_tmp = "WS2yW-gr-K7Arz4_jPsNUrvB9HfXE5D1";
 
     // https://analytics.luminoso.com/app/projects/p87t862f/prsfdrn2
     // "0Cr7-TIYLTEsynXW1wFiHTAOsUlUFX2h"
