@@ -117,7 +117,7 @@
         md_schema_idx < metadata.length;
         md_schema_idx++
       ) {
-        //console.log("md item = "+metadata[md_schema_idx]['name']);
+        tableau.log("md item = "+metadata[md_schema_idx]['name']);
         md_type = tableau.dataTypeEnum.string;
         if (
           metadata[md_schema_idx]["type"] == "score" ||
@@ -129,6 +129,7 @@
         }
 
         md_tmp = {
+          // the name cannot have spaces
           id: metadata[md_schema_idx]["name"],
           dataType: md_type
         };
@@ -256,6 +257,11 @@
       success: function(resp_data) {
         console.log("metadata SUCCESS");
 
+        // subset names (as table data) cannot have spaces. Just change them here
+        for (var idx=0;idx<resp_data.result.length;idx++)
+        {
+          resp_data.result[idx].name = resp_data.result[idx].name.replace(/\s+/g, '-')
+        }
         md_callback(resp_data.result);
       },
       error: function(xhr, status, text) {
@@ -782,7 +788,8 @@
               md_idx < doc_table[d_idx].metadata.length;
               md_idx++
             ) {
-              new_row[doc_table[d_idx].metadata[md_idx].name] =
+              // remember, tableau cannot handle metadata naems with spaces. replace with '-'
+              new_row[doc_table[d_idx].metadata[md_idx].name.replace(/\s+/g, '-')] =
                 doc_table[d_idx].metadata[md_idx].value;
             }
           }
@@ -812,7 +819,8 @@
               ss_val_idx++
             ) {
               new_row = {
-                subset_name: metadata[md_idx].name,
+                // remember tableau cannon handle metadata names with spaces, replace with -
+                subset_name: metadata[md_idx].name.replace(/\s+/g, '-'),
                 type: metadata[md_idx].type,
                 subset_value: metadata[md_idx]["values"][ss_val_idx]["value"],
                 count: metadata[md_idx]["values"][ss_val_idx]["count"]
@@ -869,6 +877,20 @@
               doc_0 = undefined;
               doc_0_id = undefined;
             }
+            if (doc_data.length > 1) {
+              doc_1 = doc_data[1].text;
+              doc_1_id = doc_data[1].doc_id;
+            } else {
+              doc_1 = undefined;
+              doc_1_id = undefined;
+            }
+            if (doc_data.length > 2) {
+              doc_2 = doc_data[2].text;
+              doc_2_id = doc_data[2].doc_id;
+            } else {
+              doc_2 = undefined;
+              doc_2_id = undefined;
+            }
 
             new_row = {
               subset_name: pt_data.subset_terms[pt_data.ss_idx].subset_name,
@@ -882,7 +904,11 @@
                 match_counts[pt_data.mc_idx].exact_match_count,
               relevance: match_counts[pt_data.mc_idx].relevance,
               sample_text_0: doc_0,
-              sample_text_0_id: doc_0_id
+              sample_text_0_id: doc_0_id,
+              sample_text_1: doc_1,
+              sample_text_1_id: doc_1_id,
+              sample_text_2: doc_2,
+              sample_text_2_id: doc_2_id
             };
             //console.log("ADDING NEW ROW = "+JSON.stringify(new_row))
             tableData.push(new_row);
@@ -945,6 +971,8 @@ $(document).ready(function() {
     // lumi_url_tmp = "https://analytics.luminoso.com/app/projects/p87t862f/prk3wg56"
     // lumi_url_tmp =
     //  "https://analytics.luminoso.com/app/projects/p87t862f/prsfdrn2";
+    lumi_url_tmp = "https://analytics.luminoso.com/app/projects/u22n473c/prgsqc5b"
+    lumi_token_tmp = "fGpZVIxEGxtRhd6CrnWRABt9oWv3890U"
 
     // https://analytics.luminoso.com/app/projects/p87t862f/prsfdrn2
     // "0Cr7-TIYLTEsynXW1wFiHTAOsUlUFX2h"
