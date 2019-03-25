@@ -143,7 +143,7 @@
         columns: doc_cols
       };
 
-      // Schema for score_driver table
+      // Schema for subset key terms table
       var skt_cols = [
         {
           id: "term",
@@ -205,7 +205,29 @@
         columns: skt_cols
       };
 
-      schemaCallback([docTable, scoreDriverTable, skt_table]);
+
+      // Schema for score_driver table
+      var subsets_cols = [
+        {
+          id: "subset_name",
+          dataType: tableau.dataTypeEnum.string
+        },
+        {
+          id: "value",
+          dataType: tableau.dataTypeEnum.string
+        },
+        {
+          id: "count",
+          dataType: tableau.dataTypeEnum.float
+        }
+      ];
+      var subsets_table = {
+        id: "subsets",
+        alias: "Subsets Table",
+        columns: subsets_cols
+      };
+
+      schemaCallback([docTable, scoreDriverTable, skt_table, subsets_table]);
     }); // get_metadata
   }; // getSchema
 
@@ -819,8 +841,7 @@
               ss_val_idx++
             ) {
               new_row = {
-                // remember tableau cannon handle metadata names with spaces, replace with -
-                subset_name: metadata[md_idx].name.replace(/\s+/g, '-'),
+                subset_name: metadata[md_idx].name,
                 type: metadata[md_idx].type,
                 subset_value: metadata[md_idx]["values"][ss_val_idx]["value"],
                 count: metadata[md_idx]["values"][ss_val_idx]["count"]
@@ -893,7 +914,8 @@
             }
 
             new_row = {
-              subset_name: pt_data.subset_terms[pt_data.ss_idx].subset_name,
+              // remember tableau cannon handle metadata names with spaces, replace with -
+              subset_name: pt_data.subset_terms[pt_data.ss_idx].subset_name.replace(/\s+/g, '-'),
               subset_value: pt_data.subset_terms[pt_data.ss_idx].subset_value,
               term: pt_data.match_counts[pt_data.mc_idx].name,
               exact_match:
@@ -949,6 +971,33 @@
         } // process match counts callback
       });
     } // subset key terms table
+    else if (table["tableInfo"]["id"] == "subsets") {
+      // get all the metadata
+      get_metadata(project_url, lumi_token, function(metadata) {
+        console.log("SUCCESS - got metadata for subsets");
+        console.log("md[0] = " + JSON.stringify(metadata[0]));
+        var tableData = [];
+        for (var idx=0;idx<metadata.length;idx++)
+        {
+          if (metadata[idx].values!=undefined)
+          {
+            for (var v_idx=0;v_idx<metadata[idx].values.length;v_idx++)
+            {
+              tableData.push(
+                {
+                  subset_name: metadata[idx].name.replace(/\s+/g, '-'),
+                  value: metadata[idx].values[v_idx].value,
+                  count: metadata[idx].values[v_idx].count
+                });
+            } // for list of values
+          } // if list of values
+        } // for metadata list
+
+        console.log("SUBSETS DONE tdlen=" + tableData.length);
+        table.appendRows(tableData);
+        doneCallback();
+      });  // subsets get metadata callback
+    } // subsets table
   }; // getData
 
   tableau.registerConnector(luminosoConnector);
@@ -971,8 +1020,8 @@ $(document).ready(function() {
     // lumi_url_tmp = "https://analytics.luminoso.com/app/projects/p87t862f/prk3wg56"
     // lumi_url_tmp =
     //  "https://analytics.luminoso.com/app/projects/p87t862f/prsfdrn2";
-    lumi_url_tmp = "https://analytics.luminoso.com/app/projects/u22n473c/prgsqc5b"
-    lumi_token_tmp = "fGpZVIxEGxtRhd6CrnWRABt9oWv3890U"
+    // lumi_url_tmp = "https://analytics.luminoso.com/app/projects/u22n473c/prgsqc5b"
+    // lumi_token_tmp = "fGpZVIxEGxtRhd6CrnWRABt9oWv3890U"
 
     // https://analytics.luminoso.com/app/projects/p87t862f/prsfdrn2
     // "0Cr7-TIYLTEsynXW1wFiHTAOsUlUFX2h"
