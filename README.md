@@ -34,8 +34,13 @@ Current Tables:
  - doc_table
  - score_drivers
  - subset_key_terms
+ - subsets
+ - concept_associations_table
 
 Change History:
+ - Version 0.4.0
+   - Concepts Associations Table
+   - Subsets Table
  - Version 0.3.0
    - Subset key terms table - without odds and p_value</li></ul>
 - Version 0.2.0
