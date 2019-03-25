@@ -1193,9 +1193,9 @@ $(document).ready(function() {
     //  "https://analytics.luminoso.com/app/projects/p87t862f/prsfdrn2";
     // lumi_url_tmp = "https://analytics.luminoso.com/app/projects/u22n473c/prgsqc5b"
     // lumi_token_tmp = "fGpZVIxEGxtRhd6CrnWRABt9oWv3890U"
-    lumi_url_tmp =
-      "https://analytics.luminoso.com/app/projects/j48f473w/prwx3z7n";
-    lumi_token_tmp = "WS2yW-gr-K7Arz4_jPsNUrvB9HfXE5D1";
+    // lumi_url_tmp =
+    //  "https://analytics.luminoso.com/app/projects/j48f473w/prwx3z7n";
+    // lumi_token_tmp = "WS2yW-gr-K7Arz4_jPsNUrvB9HfXE5D1";
 
     // https://analytics.luminoso.com/app/projects/p87t862f/prsfdrn2
     // "0Cr7-TIYLTEsynXW1wFiHTAOsUlUFX2h"
