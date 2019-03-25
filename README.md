@@ -28,6 +28,17 @@ To use:
 
 > Click Update Now
 
-Currently the only working table is score-drivers. Others will be added shortly.
+Note: To get around CORS issues, this connector currently uses a free/not highly available CORS proxy. This could go up or down at any point and should be replaced with something better.
 
-Note: To get around CORS issues, this connector currently uses a free/not highly available CORS proxy [https://cors-anywhere.herokuapp.com/]. This could go up or down at any point and should be replaced with something better.  
+Current Tables:
+ - doc_table
+ - score_drivers
+ - subset_key_terms
+
+Change History:
+ - Version 0.3.0
+   - Subset key terms table - without odds and p_value</li></ul>
+- Version 0.2.0
+   - Added doc_table</li></ul>
+- Version 0.1.0
+   - Initial release - score_drivers table
