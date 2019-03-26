@@ -928,18 +928,16 @@
               var tableData = [];
               var rows_complete = 0;
               // this is the actual data return
-              // console.log("gsd Callback from got_score_drivers");
-              console.log(JSON.stringify(sd_data[0]));
-
-              // setup the pass-through data for the three-docs call
+              console.log("gsd Callback from got_score_drivers");
+              //console.log("sd_data0="+JSON.stringify(sd_data[0]));
 
               for (var idx = 0; idx < sd_data.length; idx++) {
                 // make a pt_data (pass_through) data object for each iteration
-                pt_data = {
+                var pt_data = {
                   md_idx: md_idx,
                   metadata: metadata,
                   sd_data: sd_data,
-                  idx: 0
+                  idx: idx
                 };
 
                 // do a second fetch for some sample docs
@@ -949,10 +947,12 @@
                   pt_data,
                   sd_data[idx].texts,
                   function(pt_data, doc_data) {
-                    console.log("3ds callback from get_three_docs");
-                    if (pt_data.idx == 0) {
-                      console.log("doc=" + JSON.stringify(doc_data[0]));
-                    }
+                    // console.log("3ds callback from get_three_docs");
+                    // console.log("pt_data idx="+pt_data.idx);
+                    console.log("sd_data name = "+pt_data.sd_data[pt_data.idx].name)
+                    //if (pt_data.idx < 2) {
+                    //  console.log("doc=" + JSON.stringify(doc_data[0]));
+                    //}
 
                     tableData.push({
                       score_driver_name: pt_data.sd_data[pt_data.idx].name,
