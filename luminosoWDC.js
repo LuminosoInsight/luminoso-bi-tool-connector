@@ -785,7 +785,7 @@
     // create the params for the match_counts call
     var params = {
       filter: JSON.stringify([{ name: ss_name, values: [ss_value] }]),
-      concept_selector: JSON.stringify({ type: "top", limit: 100 })
+      concept_selector: JSON.stringify({ type: "top", limit: 50 })
     };
     Object.keys(params).forEach(function(key) {
       url = addParameterToURL(url.toString(), key, params[key]);
