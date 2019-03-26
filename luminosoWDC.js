@@ -256,12 +256,41 @@
         columns: top_concept_assoc_cols
       };
 
+      var themes_cols = [
+        {
+          id: "name",
+          dataType: tableau.dataTypeEnum.string
+        },
+        {
+          id: "texts",
+          dataType: tableau.dataTypeEnum.string
+        },
+        {
+          id: "cluster_label",
+          dataType: tableau.dataTypeEnum.string
+        },        
+        {
+          id: "cluster_label_nolang",
+          dataType: tableau.dataTypeEnum.string
+        },
+        {
+          id: "exact_term_ids",
+          dataType: tableau.dataTypeEnum.string
+        }
+      ]
+      var themes_table = {
+        id: "themes",
+        alias: "Themes",
+        columns: themes_cols
+      };
+
       schemaCallback([
         docTable,
         scoreDriverTable,
         skt_table,
         subsets_table,
-        top_concept_assoc_table
+        top_concept_assoc_table,
+        themes_table
       ]);
     }); // get_metadata callback
   }; // getSchema
@@ -374,6 +403,58 @@
       },
       error: function(xhr, status, text) {
         console.log("ERROR getting concepts: " + status);
+        console.log("error text = " + text);
+
+        var response = $.parseJSON(xhr.responseText);
+        if (response) console.log(response.error);
+      },
+      beforeSend: setHeader
+    });
+
+    function setHeader(xhr) {
+      xhr.setRequestHeader("Authorization", "Token " + lumi_token);
+      xhr.setRequestHeader("lumi", "lumi-cors");
+    }
+  }
+
+   /**
+   * Get project themes
+   *
+   * Description.
+   * Get the list of themes for this project
+   *
+   * @param {string} proj_api - the Daylight url
+   * @param {string} lumi_token  - the security token from the UI User settings/API tokens
+   * @param {function} concepts_callback - call back after the data is received
+   *
+   */
+  function get_themes(proj_api, lumi_token, concept_type, concepts_callback) {
+    // create the url object
+    var url = proj_api + "/concepts/";
+    console.log("metadata url=" + url);
+    console.log("lumi_token=" + lumi_token);
+
+    // create the params for the get themes call
+    var params = {
+      concept_selector: JSON.stringify({ type: "suggested", 'num_clusters': 7, 'num_cluster_concepts': 7 })
+    };
+    Object.keys(params).forEach(function(key) {
+      url = addParameterToURL(url.toString(), key, params[key]);
+    });
+
+    $.ajax({
+      url: url,
+      type: "GET",
+      dataType: "json",
+      success: function(resp_data) {
+        console.log("get themes SUCCESS");
+
+        console.log("themes0=" + JSON.stringify(resp_data.result[0]));
+
+        concepts_callback(resp_data.result);
+      },
+      error: function(xhr, status, text) {
+        console.log("ERROR getting themes: " + status);
         console.log("error text = " + text);
 
         var response = $.parseJSON(xhr.responseText);
@@ -1159,12 +1240,37 @@
               association_score:
                 concept_assoc[idx].associations[a_idx].association_score
             }); // push
-            console.log("PUSH complete");
           } // for assoc idx
         } // for concepts idx
         console.log("CONCEPT ASSOCIATIONS DONE len=" + tableData.length);
         table.appendRows(tableData);
         doneCallback();
+      }); // get concepts callback
+    } // if top_concepts_assoc
+    else if (table["tableInfo"]["id"] == "themes") {
+      // get all the metadata
+      get_themes(project_url, lumi_token, "top", function(
+        theme_data
+      ) {
+        console.log("SUCCESS - got theme data");
+        console.log("num concepts=" + theme_data.length);
+        console.log("theme_data0 = "+JSON.stringify(theme_data[0]));
+        var tableData = [];
+        
+        for (var idx = 0; idx < theme_data.length; idx++) {
+ 
+            tableData.push({
+              name: theme_data[idx].name,
+              texts: theme_data[idx].texts,
+              cluster_label: theme_data[idx].cluster_label,
+              cluster_label_nolang: theme_data[idx].cluster_label.split("|")[0],
+              exact_term_ids: theme_data[idx].exact_term_ids
+            }); // push
+        } // for concepts idx
+        console.log("THEMES DONE len=" + tableData.length);
+        table.appendRows(tableData);
+        doneCallback();
+        
       }); // get concepts callback
     } // if top_concepts_assoc
   }; // getData
