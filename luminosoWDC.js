@@ -1045,11 +1045,11 @@
       }); // get docs callback
     } // if docs table
     else if (table["tableInfo"]["id"] == "subset_key_terms") {
+      var tableData = [];
       // first get all the metadata
       get_metadata(project_url, lumi_token, function(metadata) {
         console.log("SUCCESS - got metadata for skt");
         console.log("md[0] = " + JSON.stringify(metadata[0]));
-        var tableData = [];
 
         // first build a list of metadata name->value key pairs to iterate
         subset_terms = [];
@@ -1092,7 +1092,6 @@
           match_counts = match_counts["match_counts"];
           console.log("GOT MCLEN" + match_counts.length);
 
-          var tableData = [];
           var mc_complete = 0;
 
           for (var mc_idx=0;mc_idx<match_counts.length;mc_idx++)
