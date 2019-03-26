@@ -1012,20 +1012,26 @@
           console.log("GOT MCLEN" + match_counts.length);
 
           var tableData = [];
-          pt_data = {
-            mc_idx: 0,
-            subset_terms: subset_terms,
-            ss_idx: ss_idx,
-            match_counts: match_counts
-          };
-          // do a second fetch for some sample docs
-          get_three_docs(
-            project_url,
-            lumi_token,
-            pt_data,
-            [pt_data.match_counts[pt_data.mc_idx].name],
-            process_three_docs
-          );
+          var mc_complete = 0;
+
+          for (var mc_idx=0;mc_idx<match_counts.length;mc_idx++)
+          {
+            pt_data = {
+              mc_idx: 0,
+              subset_terms: subset_terms,
+              ss_idx: ss_idx,
+              mc_idx: mc_idx,
+              match_counts: match_counts
+            };
+            // do a second fetch for some sample docs
+            get_three_docs(
+              project_url,
+              lumi_token,
+              pt_data,
+              [pt_data.match_counts[pt_data.mc_idx].name],
+              process_three_docs
+            );
+          }
 
           function process_three_docs(pt_data, doc_data) {
             //console.log("callback from get_three_docs");
@@ -1080,17 +1086,9 @@
             //console.log("ADDING NEW ROW = "+JSON.stringify(new_row))
             tableData.push(new_row);
 
-            pt_data.mc_idx++;
-            if (pt_data.mc_idx < pt_data.match_counts.length) {
-              // get the next match_count set of documents
-              get_three_docs(
-                project_url,
-                lumi_token,
-                pt_data,
-                [pt_data.match_counts[pt_data.mc_idx].name],
-                process_three_docs
-              );
-            } else {
+            mc_complete++;
+            console.log("mc_complete="+mc_complete+" of "+pt_data.match_counts.length);
+            if (mc_complete >= pt_data.match_counts.length) {
               // done with that match_count, now get the next subset
               next_idx = pt_data.ss_idx += 1;
               if (next_idx < pt_data.subset_terms.length) {
@@ -1189,7 +1187,7 @@ $(document).ready(function() {
     // lumi_token_tmp = "0Cr7-TIYLTEsynXW1wFiHTAOsUlUFX2h";
     // lumi_url_tmp = "http://localhost:8889/analytics.luminoso.com/app/projects/p87t862f/prk3wg56"
     // lumi_url_tmp = "https://analytics.luminoso.com/app/projects/p87t862f/prk3wg56"
-    //lumi_url_tmp =
+    // lumi_url_tmp =
     //  "https://analytics.luminoso.com/app/projects/p87t862f/prsfdrn2";
     // lumi_url_tmp = "https://analytics.luminoso.com/app/projects/u22n473c/prgsqc5b"
     // lumi_token_tmp = "fGpZVIxEGxtRhd6CrnWRABt9oWv3890U"
