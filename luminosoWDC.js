@@ -258,26 +258,22 @@
 
       var themes_cols = [
         {
-          id: "name",
-          dataType: tableau.dataTypeEnum.string
-        },
-        {
-          id: "texts",
-          dataType: tableau.dataTypeEnum.string
-        },
-        {
           id: "cluster_label",
           dataType: tableau.dataTypeEnum.string
-        },        
+        },
         {
-          id: "cluster_label_nolang",
+          id: "concepts",
           dataType: tableau.dataTypeEnum.string
         },
         {
-          id: "exact_term_ids",
+          id: "match_count",
+          dataType: tableau.dataTypeEnum.string
+        },
+        {
+          id: "id",
           dataType: tableau.dataTypeEnum.string
         }
-      ]
+      ];
       var themes_table = {
         id: "themes",
         alias: "Themes",
@@ -417,7 +413,7 @@
     }
   }
 
-   /**
+  /**
    * Get project themes
    *
    * Description.
@@ -436,7 +432,11 @@
 
     // create the params for the get themes call
     var params = {
-      concept_selector: JSON.stringify({ type: "suggested", 'num_clusters': 7, 'num_cluster_concepts': 7 })
+      concept_selector: JSON.stringify({
+        type: "suggested",
+        num_clusters: 10,
+        num_cluster_concepts: 5
+      })
     };
     Object.keys(params).forEach(function(key) {
       url = addParameterToURL(url.toString(), key, params[key]);
@@ -642,7 +642,7 @@
    *
    * @param {string} proj_api - the Dalight project url
    * @param {string} lumi_token - the Daylight security token
-   * @param {string} pass_through_data - data to be passed to the callback
+   * @param {Object} pass_through_data - data to be passed to the callback
    * @param {list} [concept_list] - the list of concepts - comes directly from score driver output
    * @param {function} doc_callback - the callback after the docs have been received
    *
@@ -846,28 +846,32 @@
    *
    * @param {string} proj_api - the Daylight url
    * @param {string} lumi_token  - the security token from the UI User settings/API tokens
+   * @param {string} lumi_filter - a Luminoso filter dictionary
+   * @param {string} lumi_concept_selector - a Luminoso concept selector dictionary
+   * @param {Object} mc_pt_data - an object to pass through to the callback function
    * @param {function} mc_callback - call back after the data is received
    *
    */
   function get_match_counts(
     proj_api,
     lumi_token,
-    ss_index,
-    ss_name,
-    ss_value,
+    lumi_filter,
+    lumi_concept_selector,
+    mc_pt_data,
     mc_callback
   ) {
     // create the url object
     var url = proj_api + "/concepts/match_counts";
 
-    console.log("metadata url=" + url);
+    console.log("match_count url=" + url);
     console.log("lumi_token=" + lumi_token);
 
     // create the params for the match_counts call
-    var params = {
-      filter: JSON.stringify([{ name: ss_name, values: [ss_value] }]),
-      concept_selector: JSON.stringify({ type: "top", limit: 25 })
-    };
+    var params = {};
+    if (lumi_filter != null) params["filter"] = JSON.stringify([lumi_filter]);
+    if (concept_selector != null)
+      params["concept_selector"] = JSON.stringify(lumi_concept_selector);
+
     Object.keys(params).forEach(function(key) {
       url = addParameterToURL(url.toString(), key, params[key]);
     });
@@ -878,11 +882,11 @@
       dataType: "json",
       success: function(resp_data) {
         console.log("match_counts SUCCESS");
-        console.log("mc= " + JSON.stringify(resp_data));
-        mc_callback(ss_index, ss_name, ss_value, resp_data);
+        //console.log("mc= " + JSON.stringify(resp_data));
+        mc_callback(mc_pt_data, resp_data);
       },
       error: function(xhr, status, text) {
-        console.log("ERROR getting metadata: " + status);
+        console.log("ERROR getting match_counts: " + status);
         console.log("error text = " + text);
 
         var response = $.parseJSON(xhr.responseText);
@@ -949,7 +953,9 @@
                   function(pt_data, doc_data) {
                     // console.log("3ds callback from get_three_docs");
                     // console.log("pt_data idx="+pt_data.idx);
-                    console.log("sd_data name = "+pt_data.sd_data[pt_data.idx].name)
+                    console.log(
+                      "sd_data name = " + pt_data.sd_data[pt_data.idx].name
+                    );
                     //if (pt_data.idx < 2) {
                     //  console.log("doc=" + JSON.stringify(doc_data[0]));
                     //}
@@ -1077,29 +1083,35 @@
         // this will be called again by get_three_docs callback with the next index
         // once all the match_counts have been processed
         console.log("ss=" + JSON.stringify(subset_terms[0]));
+        filter = {
+          name: subset_terms[0].subset_name,
+          values: [subset_terms[0].subset_value]
+        };
+        concept_selector = { type: "top", limit: 25 };
+        mc_pt_data = { ss_idx: 0 };
+
         get_match_counts(
           project_url,
           lumi_token,
-          0,
-          subset_terms[0].subset_name,
-          subset_terms[0].subset_value,
+          filter,
+          concept_selector,
+          mc_pt_data,
           process_match_counts
         );
 
-        function process_match_counts(ss_idx, ss_name, ss_value, match_counts) {
-          console.log("GOT MATCH COUNTS_" + ss_name);
+        function process_match_counts(mc_pt_data, match_counts) {
+          //console.log("GOT MATCH COUNTS_" + ss_name);
           // console.log("GOT MATCH COUNTS_" + JSON.stringify(match_counts));
           match_counts = match_counts["match_counts"];
           console.log("GOT MCLEN" + match_counts.length);
 
           var mc_complete = 0;
 
-          for (var mc_idx=0;mc_idx<match_counts.length;mc_idx++)
-          {
+          for (var mc_idx = 0; mc_idx < match_counts.length; mc_idx++) {
             pt_data = {
               mc_idx: 0,
               subset_terms: subset_terms,
-              ss_idx: ss_idx,
+              ss_idx: mc_pt_data.ss_idx,
               mc_idx: mc_idx,
               match_counts: match_counts
             };
@@ -1167,7 +1179,12 @@
             tableData.push(new_row);
 
             mc_complete++;
-            console.log("mc_complete="+mc_complete+" of "+pt_data.match_counts.length);
+            console.log(
+              "mc_complete=" +
+                mc_complete +
+                " of " +
+                pt_data.match_counts.length
+            );
             if (mc_complete >= pt_data.match_counts.length) {
               // done with that match_count, now get the next subset
               next_idx = pt_data.ss_idx += 1;
@@ -1176,12 +1193,20 @@
                   "GET NEXT SUBSET=" +
                     pt_data.subset_terms[next_idx].subset_name
                 );
+
+                filter = {
+                  name: pt_data.subset_terms[next_idx].subset_name,
+                  values: [pt_data.subset_terms[next_idx].subset_value]
+                };
+                concept_selector = { type: "top", limit: 25 };
+                mc_pt_data = { ss_idx: next_idx };
+
                 get_match_counts(
                   project_url,
                   lumi_token,
-                  next_idx,
-                  pt_data.subset_terms[next_idx].subset_name,
-                  pt_data.subset_terms[next_idx].subset_value,
+                  filter,
+                  concept_selector,
+                  mc_pt_data,
                   process_match_counts
                 );
               } else {
@@ -1198,7 +1223,7 @@
       // get all the metadata
       get_metadata(project_url, lumi_token, function(metadata) {
         console.log("SUCCESS - got metadata for subsets");
-        console.log("md[0] = " + JSON.stringify(metadata[0]));
+        //console.log("md[0] = " + JSON.stringify(metadata[0]));
         var tableData = [];
         for (var idx = 0; idx < metadata.length; idx++) {
           if (metadata[idx].values != undefined) {
@@ -1248,28 +1273,81 @@
     } // if top_concepts_assoc
     else if (table["tableInfo"]["id"] == "themes") {
       // get all the metadata
-      get_themes(project_url, lumi_token, "top", function(
-        theme_data
-      ) {
-        console.log("SUCCESS - got theme data");
-        console.log("num concepts=" + theme_data.length);
-        console.log("theme_data0 = "+JSON.stringify(theme_data[0]));
+      get_themes(project_url, lumi_token, "top", function(theme_data) {
+        //console.log("SUCCESS - got theme data");
+        console.log("num theme concepts=" + theme_data.length);
+        //console.log("theme_data0 = "+JSON.stringify(theme_data));
         var tableData = [];
-        
+        var cluster_labels = {};
+
+        // build the list of cluster labels
         for (var idx = 0; idx < theme_data.length; idx++) {
- 
-            tableData.push({
-              name: theme_data[idx].name,
-              texts: theme_data[idx].texts,
-              cluster_label: theme_data[idx].cluster_label,
-              cluster_label_nolang: theme_data[idx].cluster_label.split("|")[0],
-              exact_term_ids: theme_data[idx].exact_term_ids
-            }); // push
-        } // for concepts idx
-        console.log("THEMES DONE len=" + tableData.length);
-        table.appendRows(tableData);
-        doneCallback();
-        
+          cluster_label_nolang = theme_data[idx].cluster_label.split("|")[0];
+
+          // create the cluster label if it doesn't yet exist
+          if (!(cluster_label_nolang in cluster_labels)) {
+            cluster_labels[cluster_label_nolang] = {
+              id: "Theme " + Object.keys(cluster_labels).length,
+              name: cluster_label_nolang,
+              concepts: []
+            };
+          }
+
+          // add each name to the cluster label list
+          cluster_labels[cluster_label_nolang].concepts.push(
+            theme_data[idx].name
+          );
+        } // for themes_data
+
+        //console.log("THEMES cluseter_labels=" + JSON.stringify(cluster_labels));
+        var clusters_complete = 0;
+        for (var c_key in cluster_labels) {
+          filter = {};
+          concept_selector = {
+            type: "specified",
+            concepts: [{ texts: cluster_labels[c_key].concepts }]
+          };
+          mc_pt_data = {
+            c_key: c_key,
+            cluster_labels: cluster_labels
+          };
+          get_match_counts(
+            project_url,
+            lumi_token,
+            null,
+            concept_selector,
+            mc_pt_data,
+            function(pt_data, match_counts) {
+              console.log("mc_callback for key=" + pt_data.c_key);
+              new_row = {
+                cluster_label: pt_data.cluster_labels[pt_data.c_key].name,
+                concepts: pt_data.cluster_labels[pt_data.c_key].concepts.join(
+                  ","
+                ),
+                id: pt_data.cluster_labels[pt_data.c_key].id
+              };
+              count = 0;
+              for (
+                var mc_idx = 0;
+                mc_idx < match_counts["match_counts"].length;
+                mc_idx++
+              ) {
+                count += match_counts["match_counts"][mc_idx].exact_match_count;
+              }
+              new_row["match_count"] = count;
+              tableData.push(new_row); // push
+
+              clusters_complete += 1;
+              if (
+                clusters_complete >= Object.keys(pt_data.cluster_labels).length
+              ) {
+                console.log("THEMES DONE len=" + tableData.length);
+                table.appendRows(tableData);
+                doneCallback();
+              }
+            }
+          ); // get_match_counts callback
+        } // for c_key cluster_labels
       }); // get concepts callback
     } // if top_concepts_assoc
   }; // getData
