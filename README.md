@@ -5,28 +5,31 @@
 
 This web data connector is designed to create a simple interface between Tableau Desktop and Luminoso Daylight.
 
-To use:
+#### USAGE
 
-> Run Tableau Desktop
-> Choose Connect/To A Server...
-> Web Data Connector
+> 1. Run Tableau Desktop
+> 2. Choose Connect/To A Server...
+> 3. Web Data Connector
+> 4. Tableau Desktop will ask you for a URL
 >
-> Use this url if you want to login with username and password:
+> **WARNING** : Use these URLS within Tableau Desktop. They will not work in a browser!
+>
+> 5. Use this url if you want to login with username and password:
 >>> [https://luminosoinsight.github.io/luminoso-tableau/luminosoWDC_uname.html](https://luminosoinsight.github.io/luminoso-tableau/luminosoWDC_uname.html)
 >
-> Use this url if you want to login with a token:
+> 5. Use this url if you want to login with a token:
 >>> [https://luminosoinsight.github.io/luminoso-tableau/luminosoWDC.html](https://luminosoinsight.github.io/luminoso-tableau/luminosoWDC.html)
 
-> You should see a dialog pop-up.
+> 6. You should see a dialog pop-up.
 > Enter the url for your Luminoso Daylight project.
 > Enter your token from the UI User Settings/API Tokens
 > Click "Get Luminoso Schema"
 
 > The tables from the project will show on the Tables pane.
 
-> Drage Score Drivers to the Data Pane.
+> 7. Drage Score Drivers to the Data Pane.
 
-> Click Update Now
+> 8. Click Update Now
 
 Note: To get around CORS issues, this connector currently uses a free/not highly available CORS proxy. This could go up or down at any point and should be replaced with something better.
 
