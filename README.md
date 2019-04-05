@@ -40,8 +40,11 @@ Current Tables:
  - subsets
  - concept_associations_table
  - themes_table
+ - md_mapping - if non-English/special character subset names
 
 Change History:
+ - Version 0.5.2
+   - Fixed issues with non-English subset names
  - Version 0.5.1
    - Improved themes table output
  - Version 0.5.0
@@ -54,6 +57,6 @@ Change History:
  - Version 0.3.0
    - Subset key terms table - without odds and p_value
 - Version 0.2.0
-   - Added doc_table</li></ul>
+   - Added doc_table
 - Version 0.1.0
    - Initial release - score_drivers table
