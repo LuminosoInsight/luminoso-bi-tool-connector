@@ -117,11 +117,7 @@
         md_schema_idx < metadata.length;
         md_schema_idx++
       ) {
-        tableau.log(
-          "md item = |" +
-            metadata[md_schema_idx]["name"].replace(/\s+/g, "_") +
-            "|"
-        );
+        tableau.log("md item = |" + metadata[md_schema_idx].t_id + "|");
         md_type = tableau.dataTypeEnum.string;
         if (
           metadata[md_schema_idx]["type"] == "score" ||
@@ -134,7 +130,7 @@
 
         md_tmp = {
           // the name cannot have spaces
-          id: metadata[md_schema_idx]["name"].replace(/\s+/g, "_"),
+          id: metadata[md_schema_idx].t_id,
           dataType: md_type
         };
         //console.log("adding column = "+JSON.stringify(md_tmp))
@@ -147,12 +143,37 @@
         columns: doc_cols
       };
 
+      // an extra table if there has been a metadata mapping created for special characters
+      md_map_cols = [];
+      if (metadata.has_id_mapping) {
+        var md_map_cols = [
+          {
+            id: "metadata_id",
+            dataType: tableau.dataTypeEnum.string
+          },
+          {
+            id: "name",
+            dataType: tableau.dataTypeEnum.string
+          }
+        ];
+
+        var md_map_table = {
+          id: "md_mapping",
+          alias: "Metadata Name Mapping",
+          columns: md_map_cols
+        };
+      } // if there is a metadata mapping
+
       // Schema for subset key terms table
       var skt_cols = [
         {
           id: "term",
           dataType: tableau.dataTypeEnum.string
         },
+        {
+          id: "subset_id",
+          dataType: tableau.dataTypeEnum.string
+        },        
         {
           id: "subset_name",
           dataType: tableau.dataTypeEnum.string
@@ -211,6 +232,10 @@
 
       // Schema for score_driver table
       var subsets_cols = [
+        {
+          id: "subset_id",
+          dataType: tableau.dataTypeEnum.string
+        },
         {
           id: "subset_name",
           dataType: tableau.dataTypeEnum.string
@@ -280,14 +305,27 @@
         columns: themes_cols
       };
 
-      schemaCallback([
-        docTable,
-        scoreDriverTable,
-        skt_table,
-        subsets_table,
-        top_concept_assoc_table,
-        themes_table
-      ]);
+      // if there is a metadata mapping involved add that table
+      if (md_map_cols.length > 0) {
+        schemaCallback([
+          docTable,
+          scoreDriverTable,
+          skt_table,
+          subsets_table,
+          top_concept_assoc_table,
+          themes_table,
+          md_map_table
+        ]);
+      } else {
+        schemaCallback([
+          docTable,
+          scoreDriverTable,
+          skt_table,
+          subsets_table,
+          top_concept_assoc_table,
+          themes_table
+        ]);
+      }
     }); // get_metadata callback
   }; // getSchema
 
@@ -339,9 +377,23 @@
       success: function(resp_data) {
         console.log("metadata SUCCESS");
 
+        // create a mapping from metadata.name to t_id
+        resp_data.result["name_mapping"] = {};
+
+        // Tableau wdc can only handle ids with these characters.
+        // if any others are in the name, use a naming designation
+        var re_valid_id = new RegExp("^[a-zA-Z0-9_]*$");
         for (var idx = 0; idx < resp_data.result.length; idx++) {
-          resp_data.result[idx].name = resp_data.result[idx].name;
+          if (re_valid_id.exec(resp_data.result[idx].name)) {
+            resp_data.result[idx].t_id = resp_data.result[idx].name;
+          } else {
+            resp_data.result[idx].t_id = "Metadata" + idx;
+            resp_data.result.has_id_mapping = true;
+          }
+          resp_data.result.name_mapping[resp_data.result[idx].name] =
+            resp_data.result[idx].t_id;
         }
+
         md_callback(resp_data.result);
       },
       error: function(xhr, status, text) {
@@ -532,13 +584,18 @@
    * Call Daylight and get the score_drivers for the score_field.
    *
    * @param {*} proj_api - The Daylight project url
+   * @param {*} lumi_token - The daylight access token
    * @param {*} md_idx - the current metadata field index
    * @param {*} score_field - the score field to use to calcualte the score_driver
    * @param {*} sd_callback - the callback after data received
-   *
-   * TODO: This needs to be refactored for lumi_token as param. currently global which is dangerous
    */
-  function get_score_drivers(proj_api, md_idx, score_field, sd_callback) {
+  function get_score_drivers(
+    proj_api,
+    lumi_token,
+    md_idx,
+    score_field,
+    sd_callback
+  ) {
     // create the url object
     //var url = new URL(
     //  proj_apiv5+"/concepts/score_drivers/"
@@ -588,49 +645,41 @@
    * processed as score drivers.
    *
    * @param {string} proj_api - the Daylight project url
+   * @param {string} lumi_token - the Daylight access token
    * @param {string} sf_callback  - the callback after data received
    *
-   * TODO: add lumi_token as a param, dangerous as used globally
    */
-  function get_score_fields(proj_api, sf_callback) {
+  function get_score_fields(proj_api, lumi_token, sf_callback) {
     // create the url object
-    var url = proj_api + "/metadata/";
-    console.log("metadata url=" + url);
-    $.ajax({
-      url: url,
-      type: "GET",
-      dataType: "json",
-      success: function(resp_data) {
-        console.log("metadata SUCCESS");
-        //console.log('md_result='+JSON.stringify(resp_data));
-        result = resp_data.result;
-        //console.log('result='+JSON.stringify(result));
-        //console.log('len='+result.length);
+    //var url = proj_api + "/metadata/";
+    //console.log("metadata url=" + url);
+    //$.ajax({
+    //  url: url,
+    //  type: "GET",
+    //  dataType: "json",
+    //  success:
 
-        var metadata = [];
-        for (var md_resp_idx = 0; md_resp_idx < result.length; md_resp_idx++) {
-          //console.log('it x');
-          //console.log("checking name="+result[md_resp_idx]['name']+"  type="+result[md_resp_idx]['type']);
-          if (
-            result[md_resp_idx]["type"] == "score" ||
-            result[md_resp_idx]["type"] == "number"
-          ) {
-            metadata.push(result[md_resp_idx]);
-          }
+    get_metadata(proj_api, lumi_token, function(result) {
+      console.log("sf_metadata SUCCESS");
+      //console.log('md_result='+JSON.stringify(resp_data));
+      //result = resp_data.result;
+      //console.log('result='+JSON.stringify(result));
+      //console.log('len='+result.length);
+
+      var score_fields = [];
+      for (var md_resp_idx = 0; md_resp_idx < result.length; md_resp_idx++) {
+        //console.log('it x');
+        //console.log("checking name="+result[md_resp_idx]['name']+"  type="+result[md_resp_idx]['type']);
+        if (
+          result[md_resp_idx]["type"] == "score" ||
+          result[md_resp_idx]["type"] == "number"
+        ) {
+          score_fields.push(result[md_resp_idx]);
         }
-        //console.log('metadata='+JSON.stringify(metadata));
-        sf_callback(metadata);
-      },
-      error: function() {
-        console.log("ERROR getting score fields list");
-      },
-      beforeSend: setHeader
+      }
+      //console.log('metadata='+JSON.stringify(metadata));
+      sf_callback(score_fields);
     });
-
-    function setHeader(xhr) {
-      xhr.setRequestHeader("Authorization", "Token " + lumi_token);
-      xhr.setRequestHeader("lumi", "lumi-cors");
-    }
   }
 
   /**
@@ -654,7 +703,7 @@
     concept_list,
     doc_callback
   ) {
-    console.log("GET THREE DOCS CONCEPTS = " + JSON.stringify(concept_list));
+    // console.log("GET THREE DOCS CONCEPTS = " + JSON.stringify(concept_list));
     // create the url object
     var url = proj_api + "/docs/";
 
@@ -673,13 +722,13 @@
       type: "GET",
       dataType: "json",
       success: function(resp_data) {
-        console.log("3docs SUCCESS");
+        // console.log("3docs SUCCESS");
         //console.log("resp idx="+idx+"  "+JSON.stringify(concept_list));
         //doc_callback(idx, sd_data, md_idx, metadata, resp_data.result);
         doc_callback(pass_through_data, resp_data.result);
       },
       error: function() {
-        console.log("ERROR getting data");
+        console.log("ERROR 3docs getting data");
       },
       beforeSend: setHeader
     });
@@ -863,8 +912,8 @@
     // create the url object
     var url = proj_api + "/concepts/match_counts";
 
-    console.log("match_count url=" + url);
-    console.log("lumi_token=" + lumi_token);
+    // console.log("match_count url=" + url);
+    // console.log("lumi_token=" + lumi_token);
 
     // create the params for the match_counts call
     var params = {};
@@ -881,7 +930,7 @@
       type: "GET",
       dataType: "json",
       success: function(resp_data) {
-        console.log("match_counts SUCCESS");
+        // console.log("match_counts SUCCESS");
         //console.log("mc= " + JSON.stringify(resp_data));
         mc_callback(mc_pt_data, resp_data);
       },
@@ -919,13 +968,14 @@
     console.log("proj_url=" + project_url);
 
     if (table["tableInfo"]["id"] == "score_drivers") {
-      get_score_fields(project_url, function(metadata) {
+      get_score_fields(project_url, lumi_token, function(metadata) {
         console.log("SUCCESS - got score fields");
         for (var md_idx = 0; md_idx < metadata.length; md_idx++) {
           //console.log("md val = " + metadata[md_idx].name);
 
           get_score_drivers(
             project_url,
+            lumi_token,
             md_idx,
             metadata[md_idx]["name"],
             function(sd_data, md_idx) {
@@ -1004,65 +1054,75 @@
       }); // get meta data
     } // if score_drivers
     else if (table["tableInfo"]["id"] == "docs") {
-      console.log("getting docs data");
+      // first get the metadata for the name mapping
+      get_metadata(project_url, lumi_token, function(metadata) {
+        console.log("SUCCESS - got metadata for skt");
+        console.log("md[0] = " + JSON.stringify(metadata[0]));
 
-      var tableData = [];
-      /*
-      // good for testing purposes if you just want to see somehting sent to client
-      tableData.push({
-        doc_id: 'OEPSOE-IDEKKD-MCDJD-DKEMDKD',
-        doc_text: "This is a test doc",
-        date: "10/11/12",
-        review: 5,
-        sentiment: "positive",
-        "sentiment_score":0.45})
-        table.appendRows(tableData);
-        doneCallback()
-        */
-      get_all_docs(project_url, lumi_token, function(doc_table) {
-        console.log("SUCCESS - got docs");
-        //console.log("docs = "+JSON.stringify(doc_table));
-        console.log("FINALE num docs = " + doc_table.length);
-        for (var d_idx = 0; d_idx < doc_table.length; d_idx++) {
-          // console.log("doc cur=" + JSON.stringify(doc_table[d_idx]));
-          var new_row = {
-            doc_id: doc_table[d_idx].doc_id,
-            doc_text: doc_table[d_idx].text
-          };
+        console.log("getting docs data");
 
-          if (doc_table[d_idx].metadata) {
-            // copy all the metadata for this document to the row
-            for (
-              var md_idx = 0;
-              md_idx < doc_table[d_idx].metadata.length;
-              md_idx++
-            ) {
-              // remember, tableau cannot handle metadata naems with spaces. replace with '-'
-              new_row[
-                doc_table[d_idx].metadata[md_idx].name.replace(/\s+/g, "_")
-              ] = doc_table[d_idx].metadata[md_idx].value;
+        var tableData = [];
+        /*
+        // good for testing purposes if you just want to see somehting sent to client
+        tableData.push({
+          doc_id: 'OEPSOE-IDEKKD-MCDJD-DKEMDKD',
+          doc_text: "This is a test doc",
+          date: "10/11/12",
+          review: 5,
+          sentiment: "positive",
+          "sentiment_score":0.45})
+          table.appendRows(tableData);
+          doneCallback()
+          */
+        get_all_docs(project_url, lumi_token, function(doc_table) {
+          console.log("SUCCESS - got docs");
+          //console.log("docs = "+JSON.stringify(doc_table));
+          console.log("FINALE num docs = " + doc_table.length);
+          for (var d_idx = 0; d_idx < doc_table.length; d_idx++) {
+            // console.log("doc cur=" + JSON.stringify(doc_table[d_idx]));
+            var new_row = {
+              doc_id: doc_table[d_idx].doc_id,
+              doc_text: doc_table[d_idx].text
+            };
+
+            if (doc_table[d_idx].metadata) {
+              if (d_idx == 0)
+                console.log(
+                  "doc md0 = " + JSON.stringify(doc_table[d_idx].metadata)
+                );
+              // copy all the metadata for this document to the row
+              for (
+                var md_idx = 0;
+                md_idx < doc_table[d_idx].metadata.length;
+                md_idx++
+              ) {
+                // remember, tableau cannot handle metadata naems with spaces. use t_id
+                new_row[
+                  metadata.name_mapping[doc_table[d_idx].metadata[md_idx].name]
+                ] = doc_table[d_idx].metadata[md_idx].value;
+              }
             }
-          }
 
-          tableData.push(new_row);
-        }
-        table.appendRows(tableData);
-        doneCallback();
-      }); // get docs callback
+            tableData.push(new_row);
+          }
+          table.appendRows(tableData);
+          doneCallback();
+        }); // get docs callback
+      }); // metadata callback
     } // if docs table
     else if (table["tableInfo"]["id"] == "subset_key_terms") {
       var tableData = [];
       // first get all the metadata
       get_metadata(project_url, lumi_token, function(metadata) {
         console.log("SUCCESS - got metadata for skt");
-        console.log("md[0] = " + JSON.stringify(metadata[0]));
+        // console.log("md[0] = " + JSON.stringify(metadata[0]));
 
         // first build a list of metadata name->value key pairs to iterate
         subset_terms = [];
         for (var md_idx = 0; md_idx < metadata.length; md_idx++) {
           // only use metadata subsets that have a list of values
           if (metadata[md_idx].values != undefined) {
-            console.log("ss values = " + JSON.stringify(metadata[md_idx]));
+            //console.log("ss values = " + JSON.stringify(metadata[md_idx]));
             for (
               var ss_val_idx = 0;
               ss_val_idx < metadata[md_idx]["values"].length;
@@ -1070,6 +1130,7 @@
             ) {
               new_row = {
                 subset_name: metadata[md_idx].name,
+                t_id: metadata[md_idx].t_id,
                 type: metadata[md_idx].type,
                 subset_value: metadata[md_idx]["values"][ss_val_idx]["value"],
                 count: metadata[md_idx]["values"][ss_val_idx]["count"]
@@ -1082,13 +1143,19 @@
         // call get match_counts with zero index.
         // this will be called again by get_three_docs callback with the next index
         // once all the match_counts have been processed
-        console.log("ss=" + JSON.stringify(subset_terms[0]));
+        //console.log("ss=" + JSON.stringify(subset_terms[0]));
         filter = {
           name: subset_terms[0].subset_name,
           values: [subset_terms[0].subset_value]
         };
-        concept_selector = { type: "top", limit: 25 };
-        mc_pt_data = { ss_idx: 0 };
+        selector_limit = 25;
+        if (subset_terms.length > 1000) selector_limit = 3;
+        else if (subset_terms.length > 500) selector_limit = 5;
+        else if (subset_terms.length > 200) selector_limit = 10;
+        else if (subset_terms.length > 100) selector_limit = 15;
+
+        mc_pt_data = { ss_idx: 0, selector_limit: selector_limit };
+        concept_selector = { type: "top", limit: mc_pt_data.selector_limit };
 
         get_match_counts(
           project_url,
@@ -1103,7 +1170,7 @@
           //console.log("GOT MATCH COUNTS_" + ss_name);
           // console.log("GOT MATCH COUNTS_" + JSON.stringify(match_counts));
           match_counts = match_counts["match_counts"];
-          console.log("GOT MCLEN" + match_counts.length);
+          //console.log("GOT MCLEN" + match_counts.length);
 
           var mc_complete = 0;
 
@@ -1127,9 +1194,7 @@
 
           function process_three_docs(pt_data, doc_data) {
             //console.log("callback from get_three_docs");
-            console.log(
-              "ptd subset=" + pt_data.subset_terms[pt_data.ss_idx].subset_name
-            );
+            //console.log("ptd subset=" + pt_data.subset_terms[pt_data.ss_idx].subset_name);
             //console.log("subset_terms="+JSON.stringify(pt_data.subset_terms[pt_data.ss_idx]));
             //console.log("docs="+JSON.stringify(doc_data))
             if (doc_data.length > 0) {
@@ -1155,10 +1220,9 @@
             }
 
             new_row = {
-              // remember tableau cannon handle metadata names with spaces, replace with -
-              subset_name: pt_data.subset_terms[
-                pt_data.ss_idx
-              ].subset_name.replace(/\s+/g, "_"),
+              // remember tableau cannon handle metadata names with spaces, replace with t_id
+              subset_id:pt_data.subset_terms[pt_data.ss_idx].t_id,
+              subset_name: pt_data.subset_terms[pt_data.ss_idx].subset_name,
               subset_value: pt_data.subset_terms[pt_data.ss_idx].subset_value,
               term: pt_data.match_counts[pt_data.mc_idx].name,
               exact_match:
@@ -1179,27 +1243,32 @@
             tableData.push(new_row);
 
             mc_complete++;
-            console.log(
-              "mc_complete=" +
-                mc_complete +
-                " of " +
-                pt_data.match_counts.length
-            );
+            //console.log("mc_complete=" + mc_complete + " of " + pt_data.match_counts.length);
             if (mc_complete >= pt_data.match_counts.length) {
               // done with that match_count, now get the next subset
               next_idx = pt_data.ss_idx += 1;
-              if (next_idx < pt_data.subset_terms.length) {
-                console.log(
-                  "GET NEXT SUBSET=" +
-                    pt_data.subset_terms[next_idx].subset_name
-                );
+              console.log(
+                "ss_idx " + next_idx + " of " + pt_data.subset_terms.length
+              );
 
+              // good for debugging - to see a quick skt output
+              // if (next_idx>10)
+              //  next_idx = pt_data.subset_terms.length
+
+              if (next_idx < pt_data.subset_terms.length) {
                 filter = {
                   name: pt_data.subset_terms[next_idx].subset_name,
                   values: [pt_data.subset_terms[next_idx].subset_value]
                 };
-                concept_selector = { type: "top", limit: 25 };
-                mc_pt_data = { ss_idx: next_idx };
+                // console.log("selector_limit = "+mc_pt_data.selector_limit)
+                concept_selector = {
+                  type: "top",
+                  limit: mc_pt_data.selector_limit
+                };
+                mc_pt_data = {
+                  ss_idx: next_idx,
+                  selector_limit: mc_pt_data.selector_limit
+                };
 
                 get_match_counts(
                   project_url,
@@ -1229,7 +1298,8 @@
           if (metadata[idx].values != undefined) {
             for (var v_idx = 0; v_idx < metadata[idx].values.length; v_idx++) {
               tableData.push({
-                subset_name: metadata[idx].name.replace(/\s+/g, "_"),
+                subset_id: metadata[idx].t_id,
+                subset_name: metadata[idx].name,
                 value: metadata[idx].values[v_idx].value,
                 count: metadata[idx].values[v_idx].count
               });
@@ -1287,7 +1357,7 @@
           // create the cluster label if it doesn't yet exist
           if (!(cluster_label_nolang in cluster_labels)) {
             cluster_labels[cluster_label_nolang] = {
-              id: "Theme " + Object.keys(cluster_labels).length,
+              id: "Theme" + Object.keys(cluster_labels).length,
               name: cluster_label_nolang,
               concepts: []
             };
@@ -1350,6 +1420,20 @@
         } // for c_key cluster_labels
       }); // get concepts callback
     } // if top_concepts_assoc
+    else if (table["tableInfo"]["id"] == "md_mapping") {
+      // get all the metadata
+      get_metadata(project_url, lumi_token, function(metadata) {
+        var tableData = [];
+        for (var idx = 0; idx < metadata.length; idx++) {
+          tableData.push({
+            metadata_id: metadata[idx].t_id,
+            name: metadata[idx].name
+          }); // push
+        } // for metadata idx
+        table.appendRows(tableData);
+        doneCallback();
+      });
+    }
   }; // getData
 
   tableau.registerConnector(luminosoConnector);
@@ -1380,6 +1464,11 @@ $(document).ready(function() {
 
     // https://analytics.luminoso.com/app/projects/p87t862f/prsfdrn2
     // "0Cr7-TIYLTEsynXW1wFiHTAOsUlUFX2h"
+    //
+    // Japanese project
+    // lumi_token_tmp = "amrgKfR6nkZEdgotS54Lu-m8S1pASC4m";
+    // lumi_url_tmp =
+    //  "https://analytics.luminoso.com/app/projects/s85p278m/pr4mcps7";
 
     // convert an app url into an api url
     project_url = lumi_url_tmp;
