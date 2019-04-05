@@ -42,6 +42,8 @@ Current Tables:
  - themes_table
 
 Change History:
+ - Version 0.5.1
+   - Improved themes table output
  - Version 0.5.0
    - Themes table
  - Version 0.4.1
