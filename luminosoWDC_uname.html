@@ -1,4 +1,4 @@
-∏<head>
+<head>
     <title>Luminoso Daylight Data Feed - Username Login</title>
     <meta http-equiv="Cache-Control" content="no-store" />
 
@@ -13,22 +13,32 @@
 <body>
     <div class="container container-table">
         <div class="row vertical-center-row">
+                <a href="http://www.luminoso.com" target="_blank"><img src="https://luminoso.com/img/luminoso-logo.svg" width=200></a><br/>
+                <div clsss="header">Luminoso Daylight Tableau Connector</div><br/>
+        </div>
+        <div class="row vertical-center-row">
             <div class="text-center col-md-4 col-md-offset-4">
-
+                  <table>
                   <form>
+                    <tr>
                 	<div class="form-inline">
-                		<label for="lumi-project-url" class="text-center">Luminoso Project URL</label>
-                		<input type="text" class="form-control" id="lumi-project-url" value="">
+                		<td><label for="lumi-project-url" class="text-center">Luminoso Project URL:</label></td>
+                		<td><input type="text" class="form-control" id="lumi-project-url" value="" size=60></td>
                     </div>
+                    </tr>
+                    <tr>
                     <div class="form-inline">
-                        <label for="luminoso-username">Luminoso Username</label>
-                        <input type="text" class="form-control" id="lumi-username" value="">
+                        <td><label for="luminoso-username">Luminoso Username:</label></td>
+                        <td><input type="text" class="form-control" id="lumi-username" value="" size=60></td>
                     </div>
+                    <tr>
                     <div class="form-inline">
-                        <label for="luminoso-password">Luminoso Password</label>
-                        <input type="password" class="form-control" id="lumi-password" value="">
+                        <td><label for="luminoso-password">Luminoso Password:</label></td>
+                        <td><input type="password" class="form-control" id="lumi-password" value="" size=60></td>
                     </div>
-                </form>
+                    </tr>
+                  </form>
+                  </table>
 
                 <button type="button" id="submitButton" class="btn btn-success" style="margin: 10px;">Get Luminoso Schema</button>
             </div>
@@ -43,7 +53,7 @@ Current Tables:</br>
     <li>subsets</li>
     <li>concept_associations_table</li>
     <li>themes_table</li>
-    <li>md_mapping - if non-English/special character subset names</li>
+    <li>md_mapping - if non-English or special characters in subset names</li>
 </ul>
 Change History:</br>
 Version 0.5.2

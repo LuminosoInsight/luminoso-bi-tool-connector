@@ -13,20 +13,29 @@
 <body>
     <div class="container container-table">
         <div class="row vertical-center-row">
+            <a href="http://www.luminoso.com" target="_blank"><img src="https://luminoso.com/img/luminoso-logo.svg" width=200></a><br/>
+            <div clsss="header">Luminoso Daylight Tableau Connector</div>
+        </div>
+        <div class="row vertical-center-row">
             <div class="text-center col-md-4 col-md-offset-4">
 
                   <form>
+                    <table>
+                    <tr>
                 	<div class="form-inline">
-                		<label for="lumi-project-url" class="text-left">Luminoso Project URL</label>
-                        <input type="text" class="form-control" id="lumi-project-url" value="">
+                		<td><label for="lumi-project-url" class="text-right">Luminoso Project URL:</label></td>
+                        <td><input type="text" class="form-control" id="lumi-project-url" value="" size="60"></td>
                         <br/>
-                        <span>&mdash;<span>
                     </div>
+                    </tr>
+                    <tr>
                     <div class="form-inline">
-                        <label for="luminoso-token" class="text-left">Luminoso Token</label>
-                        <input type="text" class="form-control" id="lumi-token" value="">
+                        <td><label for="luminoso-token" class="text-right">Luminoso Token:</label></td>
+                        <td><input type="text" class="form-control" id="lumi-token" value="" size=60></td>
 
-                	</div>
+                    </div>
+                    </tr>
+                    </table>
                 </form>
 
                 <button type="button" id="submitButton" class="btn btn-success" style="margin: 10px;">Get Luminoso Schema</button>
@@ -42,7 +51,7 @@ Current Tables:</br>
     <li>subsets</li>
     <li>concept_associations_table</li>
     <li>themes_table</li>
-    <li>md_mapping - if non-English/special character subset names</li>
+    <li>md_mapping - if non-English or special characters subset names</li>
 </ul>
 Change History:</br>
 Version 0.5.2
