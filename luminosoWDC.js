@@ -292,7 +292,7 @@
         },
         {
           id: "match_count",
-          dataType: tableau.dataTypeEnum.string
+          dataType: tableau.dataTypeEnum.float
         },
         {
           id: "id",
@@ -1451,7 +1451,8 @@ $(document).ready(function() {
     // DEBUG:
     // Test urls, these are much faster when testing!
     // lumi_url_tmp = "https://analytics.luminoso.com/app/projects/p87t862f/prk3wg56"
-    // lumi_token_tmp = "0Cr7-TIYLTEsynXW1wFiHTAOsUlUFX2h";
+    // lumi_url_tmp = "https://analytics.luminoso.com/app/projects/p87t862f/pr35fd6m"
+    // lumi_token_tmp = "b42XHQHAGABA9zgRfnFZvhdI2ZnKFu5W";
     // lumi_url_tmp = "http://localhost:8889/analytics.luminoso.com/app/projects/p87t862f/prk3wg56"
     // lumi_url_tmp = "https://analytics.luminoso.com/app/projects/p87t862f/prk3wg56"
     // lumi_url_tmp =
@@ -1463,12 +1464,13 @@ $(document).ready(function() {
     // lumi_token_tmp = "WS2yW-gr-K7Arz4_jPsNUrvB9HfXE5D1";
 
     // https://analytics.luminoso.com/app/projects/p87t862f/prsfdrn2
-    // "0Cr7-TIYLTEsynXW1wFiHTAOsUlUFX2h"
+    // "b42XHQHAGABA9zgRfnFZvhdI2ZnKFu5W"
     //
     // Japanese project
-    // lumi_token_tmp = "amrgKfR6nkZEdgotS54Lu-m8S1pASC4m";
-    // lumi_url_tmp =
+    //lumi_token_tmp = "amrgKfR6nkZEdgotS54Lu-m8S1pASC4m";
+    //lumi_url_tmp =
     //  "https://analytics.luminoso.com/app/projects/s85p278m/pr4mcps7";
+    // lumi_url_tmp = "https://analytics.luminoso.com/app/projects/s85p278m/pr4ckpjs"
 
     // convert an app url into an api url
     project_url = lumi_url_tmp;
