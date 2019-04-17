@@ -1485,7 +1485,8 @@ $(document).ready(function() {
     // prepend the cors proxy until this is hosted on luminoso.com
     // proxy_url = "https://cors-anywhere.herokuapp.com/";
     // proxy_url = "http://localhost:8080/";
-    var proxy_url = "https://morning-anchorage-77576.herokuapp.com/";
+    // var proxy_url = "https://morning-anchorage-77576.herokuapp.com/";
+    var proxy_url = "";   // for hosting on luminoso.com don't use the proxy
     api_url = proxy_url + api_url;
     api_v4_url = proxy_url + api_v4_url;
     proj_apiv5 = proxy_url + proj_apiv5;
