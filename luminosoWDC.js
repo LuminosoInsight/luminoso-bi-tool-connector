@@ -1472,11 +1472,26 @@ $(document).ready(function() {
     //  "https://analytics.luminoso.com/app/projects/s85p278m/pr4mcps7";
     // lumi_url_tmp = "https://analytics.luminoso.com/app/projects/s85p278m/pr4ckpjs"
 
+    // bad urls for testing
+    // lumi_url_tmp = "https://analytics.luminoso.com/app/projects/p87t862f/prsfdrn2/compare?concepts=top&match_type=total&sortby=default&count=50"
+    // lumi_url_tmp = "https://analytics.luminoso.com/app/projects/p87t862f/prsfdrn2?filter=%5B1%2C%5B%5B%22review%22%2C%5B1%2C2%5D%5D%5D%5D"
+    
+    // clean the url
+    // remove anything after a ?
+    if (lumi_url_tmp.indexOf('?')>-1)
+      {
+      lumi_url_tmp = lumi_url_tmp.substring(0, lumi_url_tmp.indexOf('?'));
+      }
+    tableau.log("url = "+lumi_url_tmp);
+
     // convert an app url into an api url
     project_url = lumi_url_tmp;
     api_url = project_url.split("/app")[0] + "/api/v5";
     api_v4_url = project_url.split("/app")[0] + "/api/v4";
-    url_arr = project_url.split("/");
+
+    // second url cleaning, remove anything past the project_id
+    url_arr = project_url.split("/").slice(0,7);
+    
     project_id = url_arr[url_arr.length - 1];
     account_id = url_arr[url_arr.length - 2];
     proj_apiv4 = api_url + "/projects/" + account_id + "/" + project_id;
@@ -1487,6 +1502,7 @@ $(document).ready(function() {
     // proxy_url = "http://localhost:8080/";
     // var proxy_url = "https://morning-anchorage-77576.herokuapp.com/";
     var proxy_url = "";   // for hosting on luminoso.com don't use the proxy
+
     api_url = proxy_url + api_url;
     api_v4_url = proxy_url + api_v4_url;
     proj_apiv5 = proxy_url + proj_apiv5;

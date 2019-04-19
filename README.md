@@ -15,10 +15,10 @@ This web data connector is designed to create a simple interface between Tableau
 > **WARNING** : Use these URLS within Tableau Desktop. They will not work in a browser!
 >
 > 5. Use this url if you want to login with username and password:
->>> [https://luminosoinsight.github.io/luminoso-tableau/luminosoWDC_uname.html](https://luminosoinsight.github.io/luminoso-tableau/luminosoWDC_uname.html)
+>>> [https://luminosoinsight.github.io/luminoso-tableau/luminoso.html](https://luminosoinsight.github.io/luminoso-tableau/luminoso.html)
 >
 > 5. Use this url if you want to login with a token:
->>> [https://luminosoinsight.github.io/luminoso-tableau/luminosoWDC.html](https://luminosoinsight.github.io/luminoso-tableau/luminosoWDC.html)
+>>> [https://luminosoinsight.github.io/luminoso-tableau/luminoso_token.html](https://luminosoinsight.github.io/luminoso-tableau/luminoso_token.html)
 
 > 6. You should see a dialog pop-up.
 > Enter the url for your Luminoso Daylight project.
