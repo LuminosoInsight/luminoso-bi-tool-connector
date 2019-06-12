@@ -1,4 +1,5 @@
 (function() {
+
   /**
    * The tableau connector interface functions.
    *
@@ -107,6 +108,22 @@
         },
         {
           id: "doc_text",
+          dataType: tableau.dataTypeEnum.string
+        },        
+        {
+          id: "concept",
+          dataType: tableau.dataTypeEnum.string
+        },        
+        {
+          id: "theme",
+          dataType: tableau.dataTypeEnum.string
+        },
+        {
+          id: "theme_score",
+          dataType: tableau.dataTypeEnum.float
+        },
+        {
+          id: "theme_id",
           dataType: tableau.dataTypeEnum.string
         }
       ];
@@ -295,7 +312,7 @@
           dataType: tableau.dataTypeEnum.float
         },
         {
-          id: "id",
+          id: "theme_id",
           dataType: tableau.dataTypeEnum.string
         }
       ];
@@ -476,7 +493,7 @@
    * @param {function} concepts_callback - call back after the data is received
    *
    */
-  function get_themes(proj_api, lumi_token, concept_type, concepts_callback) {
+  function get_themes(proj_api, lumi_token, concepts_callback) {
     // create the url object
     var url = proj_api + "/concepts/";
     console.log("metadata url=" + url);
@@ -502,6 +519,46 @@
         console.log("get themes SUCCESS");
 
         console.log("themes0=" + JSON.stringify(resp_data.result[0]));
+
+        // for (var t_idx=0;t_idx<resp_data.result.length;t_idx++)
+        //{
+        //  resp_data.result['themeid'] = "Theme" + t_idx;
+        //  console.log("setting themeid: "+resp_data.result['themeid'])
+        //}
+
+        var cluster_labels = {};
+
+        // build the list of cluster labels
+        for (var idx = 0; idx < resp_data.result.length; idx++) {
+          cluster_label_nolang = resp_data.result[idx].cluster_label.split("|")[0];
+
+          // keep this nolang format around for later
+          resp_data.result[idx]['cluster_label_nolang'] = cluster_label_nolang;
+
+          // create the cluster label if it doesn't yet exist
+          if (!(cluster_label_nolang in cluster_labels)) {
+            theme_id = "Theme" + Object.keys(cluster_labels).length;
+            cluster_labels[cluster_label_nolang] = {
+              theme_id: theme_id,
+              name: cluster_label_nolang,
+              concepts: []
+            };
+            resp_data.result[idx]['theme_id'] = theme_id; 
+
+            }
+          else
+            {
+            resp_data.result[idx]['theme_id'] = cluster_labels[cluster_label_nolang]['theme_id']
+            }
+          
+          // add each name to the cluster label list
+          cluster_labels[cluster_label_nolang].concepts.push(
+            resp_data.result[idx].name
+          );
+        } // for themes_data
+
+        resp_data.result['cluster_labels'] = cluster_labels;
+
 
         concepts_callback(resp_data.result);
       },
@@ -1078,36 +1135,65 @@
           console.log("SUCCESS - got docs");
           //console.log("docs = "+JSON.stringify(doc_table));
           console.log("FINALE num docs = " + doc_table.length);
-          for (var d_idx = 0; d_idx < doc_table.length; d_idx++) {
-            // console.log("doc cur=" + JSON.stringify(doc_table[d_idx]));
-            var new_row = {
-              doc_id: doc_table[d_idx].doc_id,
-              doc_text: doc_table[d_idx].text
-            };
+          console.log("get themes");
 
-            if (doc_table[d_idx].metadata) {
-              if (d_idx == 0)
-                console.log(
-                  "doc md0 = " + JSON.stringify(doc_table[d_idx].metadata)
-                );
-              // copy all the metadata for this document to the row
-              for (
-                var md_idx = 0;
-                md_idx < doc_table[d_idx].metadata.length;
-                md_idx++
-              ) {
-                // remember, tableau cannot handle metadata naems with spaces. use t_id
-                new_row[
-                  metadata.name_mapping[doc_table[d_idx].metadata[md_idx].name]
-                ] = doc_table[d_idx].metadata[md_idx].value;
+          get_themes(project_url, lumi_token, function(theme_data) {
+
+            for (var d_idx = 0; d_idx < doc_table.length; d_idx++) {
+              // console.log("doc cur=" + JSON.stringify(doc_table[d_idx]));
+              var new_row = {
+                doc_id: doc_table[d_idx].doc_id,
+                doc_text: doc_table[d_idx].text
+              };
+
+              if (doc_table[d_idx].metadata) {
+                if (d_idx == 0)
+                  console.log(
+                    "doc md0 = " + JSON.stringify(doc_table[d_idx].metadata)
+                  );
+                // copy all the metadata for this document to the row
+                for (
+                  var md_idx = 0;
+                  md_idx < doc_table[d_idx].metadata.length;
+                  md_idx++
+                ) {
+                  // remember, tableau cannot handle metadata naems with spaces. use t_id
+                  new_row[
+                    metadata.name_mapping[doc_table[d_idx].metadata[md_idx].name]
+                  ] = doc_table[d_idx].metadata[md_idx].value;
+                }
               }
-            }
 
-            tableData.push(new_row);
-          }
-          table.appendRows(tableData);
-          doneCallback();
-        }); // get docs callback
+              // find the top theme for this doc
+              doc_vector = Array.prototype.slice.call(pack64.unpack(doc_table[d_idx]['vector']))
+              max_score = 0
+              max_topic = ''
+              max_cluster = ''
+              max_id = ''
+              for (var c_idx=0;c_idx<theme_data.length;c_idx++) {
+                  if (theme_data[c_idx]['vector'].length > 0) {
+                      theme_vector = Array.prototype.slice.call(pack64.unpack(theme_data[c_idx]['vector']))
+                      score = math.dot(doc_vector, theme_vector)
+                      if (score > max_score)
+                      {
+                          max_score = score
+                          max_topic = theme_data[c_idx]['name']
+                          max_cluster = theme_data[c_idx]['cluster_label_nolang']
+                          max_id = theme_data[c_idx]['theme_id']
+                      }
+                  }
+              }
+              new_row['concept'] = max_topic;
+              new_row['theme'] = max_cluster;
+              new_row['theme_score'] = max_score;
+              new_row['theme_id'] = max_id;
+
+              tableData.push(new_row);
+            }
+            table.appendRows(tableData);
+            doneCallback();
+          }); // get docs callback
+        }); // get themes callback
       }); // metadata callback
     } // if docs table
     else if (table["tableInfo"]["id"] == "subset_key_terms") {
@@ -1343,31 +1429,12 @@
     } // if top_concepts_assoc
     else if (table["tableInfo"]["id"] == "themes") {
       // get all the metadata
-      get_themes(project_url, lumi_token, "top", function(theme_data) {
+      get_themes(project_url, lumi_token, function(theme_data) {
         //console.log("SUCCESS - got theme data");
         console.log("num theme concepts=" + theme_data.length);
         //console.log("theme_data0 = "+JSON.stringify(theme_data));
         var tableData = [];
-        var cluster_labels = {};
-
-        // build the list of cluster labels
-        for (var idx = 0; idx < theme_data.length; idx++) {
-          cluster_label_nolang = theme_data[idx].cluster_label.split("|")[0];
-
-          // create the cluster label if it doesn't yet exist
-          if (!(cluster_label_nolang in cluster_labels)) {
-            cluster_labels[cluster_label_nolang] = {
-              id: "Theme" + Object.keys(cluster_labels).length,
-              name: cluster_label_nolang,
-              concepts: []
-            };
-          }
-
-          // add each name to the cluster label list
-          cluster_labels[cluster_label_nolang].concepts.push(
-            theme_data[idx].name
-          );
-        } // for themes_data
+        var cluster_labels = theme_data['cluster_labels'];
 
         //console.log("THEMES cluseter_labels=" + JSON.stringify(cluster_labels));
         var clusters_complete = 0;
@@ -1394,7 +1461,7 @@
                 concepts: pt_data.cluster_labels[pt_data.c_key].concepts.join(
                   ","
                 ),
-                id: pt_data.cluster_labels[pt_data.c_key].id
+                theme_id: pt_data.cluster_labels[pt_data.c_key].theme_id
               };
               count = 0;
               for (
@@ -1452,7 +1519,7 @@ $(document).ready(function() {
     // Test urls, these are much faster when testing!
     // lumi_url_tmp = "https://analytics.luminoso.com/app/projects/p87t862f/prk3wg56"
     // lumi_url_tmp = "https://analytics.luminoso.com/app/projects/p87t862f/pr35fd6m"
-    // lumi_token_tmp = "b42XHQHAGABA9zgRfnFZvhdI2ZnKFu5W";
+    // lumi_token_tmp = "k-OryQWEJVsm4k5BOWqZGosj1x-MQr0I";
     // lumi_url_tmp = "http://localhost:8889/analytics.luminoso.com/app/projects/p87t862f/prk3wg56"
     // lumi_url_tmp = "https://analytics.luminoso.com/app/projects/p87t862f/prk3wg56"
     // lumi_url_tmp =
