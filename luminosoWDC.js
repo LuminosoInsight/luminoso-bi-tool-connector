@@ -988,7 +988,7 @@
       dataType: "json",
       success: function(resp_data) {
         // console.log("match_counts SUCCESS");
-        //console.log("mc= " + JSON.stringify(resp_data));
+        // console.log("mc success= " + JSON.stringify(resp_data));
         mc_callback(mc_pt_data, resp_data);
       },
       error: function(xhr, status, text) {
@@ -1039,7 +1039,7 @@
               var tableData = [];
               var rows_complete = 0;
               // this is the actual data return
-              console.log("gsd Callback from got_score_drivers");
+              //console.log("gsd Callback from got_score_drivers");
               //console.log("sd_data0="+JSON.stringify(sd_data[0]));
 
               for (var idx = 0; idx < sd_data.length; idx++) {
@@ -1208,10 +1208,14 @@
         for (var md_idx = 0; md_idx < metadata.length; md_idx++) {
           // only use metadata subsets that have a list of values
           if (metadata[md_idx].values != undefined) {
+            if (metadata[md_idx]["values"].length>200) {
+                console.log("too many values["+String(metadata[md_idx]["values"].length)+"] in subset: "+metadata[md_idx].name+"  using top 200")
+              }
             //console.log("ss values = " + JSON.stringify(metadata[md_idx]));
+            // only take the top 200 subsets or calculations take way too long
             for (
               var ss_val_idx = 0;
-              ss_val_idx < metadata[md_idx]["values"].length;
+              ss_val_idx < Math.min(metadata[md_idx]["values"].length,200);
               ss_val_idx++
             ) {
               new_row = {
@@ -1221,8 +1225,10 @@
                 subset_value: metadata[md_idx]["values"][ss_val_idx]["value"],
                 count: metadata[md_idx]["values"][ss_val_idx]["count"]
               };
+              //console.log("ssname="+new_row.subset_name+"  ss="+new_row.subset_value+"  count="+new_row.count)
               subset_terms.push(new_row);
             }
+          //console.log("len subset_terms["+metadata[md_idx].name+"]="+subset_terms.length)
           }
         }
 
@@ -1258,26 +1264,82 @@
           match_counts = match_counts["match_counts"];
           //console.log("GOT MCLEN" + match_counts.length);
 
-          var mc_complete = 0;
+          if (match_counts.length>0) {
+            var mc_complete = 0;
 
-          for (var mc_idx = 0; mc_idx < match_counts.length; mc_idx++) {
+            for (var mc_idx = 0; mc_idx < match_counts.length; mc_idx++) {
+              pt_data = {
+                // mc_idx: 0,
+                subset_terms: subset_terms,
+                ss_idx: mc_pt_data.ss_idx,
+                mc_idx: mc_idx,
+                match_counts: match_counts
+              };
+              // do a second fetch for some sample docs
+              get_three_docs(
+                project_url,
+                lumi_token,
+                pt_data,
+                [pt_data.match_counts[pt_data.mc_idx].name],
+                process_three_docs
+              );
+            }
+          } else {
             pt_data = {
               mc_idx: 0,
               subset_terms: subset_terms,
               ss_idx: mc_pt_data.ss_idx,
-              mc_idx: mc_idx,
               match_counts: match_counts
             };
-            // do a second fetch for some sample docs
-            get_three_docs(
-              project_url,
-              lumi_token,
-              pt_data,
-              [pt_data.match_counts[pt_data.mc_idx].name],
-              process_three_docs
-            );
+
+            next_or_done(pt_data)
           }
 
+
+          function next_or_done(pt_data) {
+
+              // done with that match_count, now get the next subset
+              next_idx = pt_data.ss_idx += 1;
+              console.log(
+                "ss_idx " + next_idx + " of " + pt_data.subset_terms.length
+              );
+
+              // good for debugging - to see a quick skt output
+              // if (next_idx>10)
+              //  next_idx = pt_data.subset_terms.length
+
+              //console.log("next_idx: "+String(next_idx))
+              //console.log("<len ="+String(pt_data.subset_terms.length))
+              if (next_idx < pt_data.subset_terms.length) {
+                filter = {
+                  name: pt_data.subset_terms[next_idx].subset_name,
+                  values: [pt_data.subset_terms[next_idx].subset_value]
+                };
+                //console.log("selector_limit = "+mc_pt_data.selector_limit)
+                concept_selector = {
+                  type: "top",
+                  limit: mc_pt_data.selector_limit
+                };
+                mc_pt_data = {
+                  ss_idx: next_idx,
+                  selector_limit: mc_pt_data.selector_limit
+                };
+
+                get_match_counts(
+                  project_url,
+                  lumi_token,
+                  filter,
+                  concept_selector,
+                  mc_pt_data,
+                  process_match_counts
+                );
+              } else {
+                console.log("SKT DONE tdlen=" + tableData.length);
+                table.appendRows(tableData);
+                doneCallback();
+              } // done with last subset
+          }
+          
           function process_three_docs(pt_data, doc_data) {
             //console.log("callback from get_three_docs");
             //console.log("ptd subset=" + pt_data.subset_terms[pt_data.ss_idx].subset_name);
@@ -1331,44 +1393,7 @@
             mc_complete++;
             //console.log("mc_complete=" + mc_complete + " of " + pt_data.match_counts.length);
             if (mc_complete >= pt_data.match_counts.length) {
-              // done with that match_count, now get the next subset
-              next_idx = pt_data.ss_idx += 1;
-              console.log(
-                "ss_idx " + next_idx + " of " + pt_data.subset_terms.length
-              );
-
-              // good for debugging - to see a quick skt output
-              // if (next_idx>10)
-              //  next_idx = pt_data.subset_terms.length
-
-              if (next_idx < pt_data.subset_terms.length) {
-                filter = {
-                  name: pt_data.subset_terms[next_idx].subset_name,
-                  values: [pt_data.subset_terms[next_idx].subset_value]
-                };
-                // console.log("selector_limit = "+mc_pt_data.selector_limit)
-                concept_selector = {
-                  type: "top",
-                  limit: mc_pt_data.selector_limit
-                };
-                mc_pt_data = {
-                  ss_idx: next_idx,
-                  selector_limit: mc_pt_data.selector_limit
-                };
-
-                get_match_counts(
-                  project_url,
-                  lumi_token,
-                  filter,
-                  concept_selector,
-                  mc_pt_data,
-                  process_match_counts
-                );
-              } else {
-                console.log("SKT DONE tdlen=" + tableData.length);
-                table.appendRows(tableData);
-                doneCallback();
-              } // done with last subset
+              next_or_done(pt_data)
             }
           } // process three docs callback;
         } // process match counts callback
@@ -1519,7 +1544,8 @@ $(document).ready(function() {
     // Test urls, these are much faster when testing!
     // lumi_url_tmp = "https://analytics.luminoso.com/app/projects/p87t862f/prk3wg56"
     // lumi_url_tmp = "https://analytics.luminoso.com/app/projects/p87t862f/pr35fd6m"
-    // lumi_token_tmp = "k-OryQWEJVsm4k5BOWqZGosj1x-MQr0I";
+    // lumi_url_tmp = "https://analytics.luminoso.com/app/projects/m76u733n/prn85rp4?suggesting=false"
+    // lumi_token_tmp = "tLMBIaJf2xaybZS1-GPe-mwo";
     // lumi_url_tmp = "http://localhost:8889/analytics.luminoso.com/app/projects/p87t862f/prk3wg56"
     // lumi_url_tmp = "https://analytics.luminoso.com/app/projects/p87t862f/prk3wg56"
     // lumi_url_tmp =
