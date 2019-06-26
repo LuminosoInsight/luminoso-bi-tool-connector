@@ -642,14 +642,14 @@
    *
    * @param {*} proj_api - The Daylight project url
    * @param {*} lumi_token - The daylight access token
-   * @param {*} md_idx - the current metadata field index
+   * @param {*} pass_through_data - data to pass throug to the callback
    * @param {*} score_field - the score field to use to calcualte the score_driver
    * @param {*} sd_callback - the callback after data received
    */
   function get_score_drivers(
     proj_api,
     lumi_token,
-    md_idx,
+    pass_through_data,
     score_field,
     sd_callback
   ) {
@@ -680,7 +680,7 @@
       success: function(resp_data) {
         console.log("SUCCESS");
         //console.log("resp="+JSON.stringify(resp_data));
-        sd_callback(resp_data, md_idx);
+        sd_callback(resp_data, pass_through_data);
       },
       error: function() {
         console.log("ERROR getting data");
@@ -1025,27 +1025,39 @@
     console.log("proj_url=" + project_url);
 
     if (table["tableInfo"]["id"] == "score_drivers") {
+
       get_score_fields(project_url, lumi_token, function(metadata) {
         console.log("SUCCESS - got score fields");
+        sd_md_count = 0
+        var rows_complete = 0;
+        var rows_to_completion = 0
+        var tableData = [];
+
         for (var md_idx = 0; md_idx < metadata.length; md_idx++) {
           //console.log("md val = " + metadata[md_idx].name);
-
+          var sd_pt_data = {
+            md_idx: md_idx
+          }
           get_score_drivers(
             project_url,
             lumi_token,
-            md_idx,
+            sd_pt_data,
             metadata[md_idx]["name"],
-            function(sd_data, md_idx) {
-              var tableData = [];
-              var rows_complete = 0;
+            process_score_drivers)
+            
+          function process_score_drivers(sd_data, sd_pt_data) {
+            
+              // add the current length to the number of rows that need to be completed
+              rows_to_completion += sd_data.length
+
               // this is the actual data return
               //console.log("gsd Callback from got_score_drivers");
               //console.log("sd_data0="+JSON.stringify(sd_data[0]));
 
               for (var idx = 0; idx < sd_data.length; idx++) {
                 // make a pt_data (pass_through) data object for each iteration
-                var pt_data = {
-                  md_idx: md_idx,
+                var td_pt_data = {
+                  md_idx: sd_pt_data.md_idx,
                   metadata: metadata,
                   sd_data: sd_data,
                   idx: idx
@@ -1055,31 +1067,31 @@
                 get_three_docs(
                   project_url,
                   lumi_token,
-                  pt_data,
+                  td_pt_data,
                   sd_data[idx].texts,
-                  function(pt_data, doc_data) {
+                  function(td_pt_data, doc_data) {
                     // console.log("3ds callback from get_three_docs");
                     // console.log("pt_data idx="+pt_data.idx);
                     console.log(
-                      "sd_data name = " + pt_data.sd_data[pt_data.idx].name
+                      "sd_data name = " + td_pt_data.sd_data[td_pt_data.idx].name
                     );
                     //if (pt_data.idx < 2) {
                     //  console.log("doc=" + JSON.stringify(doc_data[0]));
                     //}
 
                     tableData.push({
-                      score_driver_name: pt_data.sd_data[pt_data.idx].name,
-                      score_field: pt_data.metadata[pt_data.md_idx].name,
+                      score_driver_name: td_pt_data.sd_data[td_pt_data.idx].name,
+                      score_field: td_pt_data.metadata[td_pt_data.md_idx].name,
                       exact_matches:
-                        pt_data.sd_data[pt_data.idx].exact_match_count,
+                        td_pt_data.sd_data[td_pt_data.idx].exact_match_count,
                       conceptual_matches:
-                        pt_data.sd_data[pt_data.idx].match_count -
-                        pt_data.sd_data[pt_data.idx].exact_match_count,
-                      total_matches: pt_data.sd_data[pt_data.idx].match_count,
-                      impact: pt_data.sd_data[pt_data.idx].impact,
-                      confidence: pt_data.sd_data[pt_data.idx].confidence,
-                      relevance: pt_data.sd_data[pt_data.idx].relevance,
-                      importance: pt_data.sd_data[pt_data.idx].importance,
+                        td_pt_data.sd_data[td_pt_data.idx].match_count -
+                        td_pt_data.sd_data[td_pt_data.idx].exact_match_count,
+                      total_matches: td_pt_data.sd_data[td_pt_data.idx].match_count,
+                      impact: td_pt_data.sd_data[td_pt_data.idx].impact,
+                      confidence: td_pt_data.sd_data[td_pt_data.idx].confidence,
+                      relevance: td_pt_data.sd_data[td_pt_data.idx].relevance,
+                      importance: td_pt_data.sd_data[td_pt_data.idx].importance,
                       sample_text_0: doc_data[0].text,
                       sample_text_0_id: doc_data[0].doc_id,
                       sample_text_1: doc_data[1].text,
@@ -1092,21 +1104,16 @@
                     rows_complete++;
 
                     // append and callback when all rows are received
-                    if (rows_complete >= pt_data.sd_data.length) {
+                    if (rows_complete >= rows_to_completion) {
+                      console.log("final sd row count="+tableData.length)
                       table.appendRows(tableData);
-
-                      console.log(
-                        "DONE. tableData=" + JSON.stringify(tableData)
-                      );
-                      console.log("len tableData = " + tableData.length);
 
                       doneCallback();
                     }
                   }
                 ); // get three docs
               } // for each sd result
-            } // get score drivers callback function
-          ); // get score drivers function call
+            } // process_score_drivers callback function
         } // for each metadata score field
       }); // get meta data
     } // if score_drivers
@@ -1545,7 +1552,7 @@ $(document).ready(function() {
     // lumi_url_tmp = "https://analytics.luminoso.com/app/projects/p87t862f/prk3wg56"
     // lumi_url_tmp = "https://analytics.luminoso.com/app/projects/p87t862f/pr35fd6m"
     // lumi_url_tmp = "https://analytics.luminoso.com/app/projects/m76u733n/prn85rp4?suggesting=false"
-    // lumi_token_tmp = "tLMBIaJf2xaybZS1-GPe-mwo";
+    // lumi_token_tmp = "ZIFzhC-QaHKxo7SqpgqHix0-bgosKPVD";
     // lumi_url_tmp = "http://localhost:8889/analytics.luminoso.com/app/projects/p87t862f/prk3wg56"
     // lumi_url_tmp = "https://analytics.luminoso.com/app/projects/p87t862f/prk3wg56"
     // lumi_url_tmp =
