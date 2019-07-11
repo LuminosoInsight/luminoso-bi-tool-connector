@@ -430,6 +430,32 @@
   }
 
   /**
+   * Get metadata mapping
+   *
+   * Description.
+   * metadata can be numberd with generic names. This maps the generic name
+   * to the actual metadata name.
+   *
+   * @param {string} proj_api - The Luminoso Daylight project api
+   * @param {string} lumi_token - The Daylight token from the UI User Settings/API Tokens
+   * @param {function} doc_all_callback - The function called after all docs have been read
+   */  
+  function get_metadata_mapping(project_url, lumi_token, gmm_callback) {
+
+      // get all the metadata
+      get_metadata(project_url, lumi_token, function(metadata) {
+        var tableData = [];
+        for (var idx = 0; idx < metadata.length; idx++) {
+          tableData.push({
+            metadata_id: metadata[idx].t_id,
+            name: metadata[idx].name
+          }); // push
+        } // for metadata idx
+        gmm_callback(tableData);
+      });
+  }
+
+  /**
    * Get project concepts
    *
    * Description.
@@ -579,6 +605,77 @@
   }
 
   /**
+   * Get themes and counts
+   *
+   * Description.
+   * get all the themes and their doc counts
+   * this is the main function that gathers the data for the connector
+   *
+   * @param {string} proj_api - The Luminoso Daylight project api
+   * @param {string} lumi_token - The Daylight token from the UI User Settings/API Tokens
+   * @param {function} gtac_callback - The function called after all thems/counts are processed
+   */  
+  function get_themes_and_counts(project_url, lumi_token, gtac_callback) {
+      // get all the metadata
+      get_themes(project_url, lumi_token, function(theme_data) {
+        //console.log("SUCCESS - got theme data");
+        console.log("num theme concepts=" + theme_data.length);
+        //console.log("theme_data0 = "+JSON.stringify(theme_data));
+        var tableData = [];
+        var cluster_labels = theme_data['cluster_labels'];
+
+        //console.log("THEMES cluseter_labels=" + JSON.stringify(cluster_labels));
+        var clusters_complete = 0;
+        for (var c_key in cluster_labels) {
+          filter = {};
+          concept_selector = {
+            type: "specified",
+            concepts: [{ texts: cluster_labels[c_key].concepts }]
+          };
+          mc_pt_data = {
+            c_key: c_key,
+            cluster_labels: cluster_labels
+          };
+          get_match_counts(
+            project_url,
+            lumi_token,
+            null,
+            concept_selector,
+            mc_pt_data,
+            function(pt_data, match_counts) {
+              console.log("mc_callback for key=" + pt_data.c_key);
+              new_row = {
+                cluster_label: pt_data.cluster_labels[pt_data.c_key].name,
+                concepts: pt_data.cluster_labels[pt_data.c_key].concepts.join(
+                  ","
+                ),
+                theme_id: pt_data.cluster_labels[pt_data.c_key].theme_id
+              };
+              count = 0;
+              for (
+                var mc_idx = 0;
+                mc_idx < match_counts["match_counts"].length;
+                mc_idx++
+              ) {
+                count += match_counts["match_counts"][mc_idx].exact_match_count;
+              }
+              new_row["match_count"] = count;
+              tableData.push(new_row); // push
+
+              clusters_complete += 1;
+              if (
+                clusters_complete >= Object.keys(pt_data.cluster_labels).length
+              ) {
+                console.log("THEMES DONE len=" + tableData.length);
+                gtac_callback(tableData);
+              }
+            }
+          ); // get_match_counts callback
+        } // for c_key cluster_labels
+      }); // get concepts callback
+  }
+
+  /**
    * Get project concept associations
    *
    * Description.
@@ -632,6 +729,48 @@
       xhr.setRequestHeader("Authorization", "Token " + lumi_token);
       xhr.setRequestHeader("lumi", "lumi-cors");
     }
+  }
+
+  /**
+   * Get top concept associations
+   *
+   * Description.
+   * gets the concept association scores for the top concepts.
+   * this is the main prep call which gathers the data to send
+   * to the connector
+   *
+   * @param {string} proj_api - The Luminoso Daylight project api
+   * @param {string} lumi_token - The Daylight token from the UI User Settings/API Tokens
+   * @param {function} gtca_callback - The function called after all top concept association are processed
+   */
+  function get_top_concept_assoc(project_url, lumi_token, gtca_callback) {
+      // get all the metadata
+      get_concept_associations(project_url, lumi_token, "top", function(
+        concept_assoc
+      ) {
+        console.log("SUCCESS - got assoc data");
+        //console.log("concept_assoc[0] = " + JSON.stringify(concept_assoc[0]));
+        console.log("num concepts=" + concept_assoc.length);
+        var tableData = [];
+        for (var idx = 0; idx < concept_assoc.length; idx++) {
+          for (
+            var a_idx = 0;
+            a_idx < concept_assoc[idx].associations.length;
+            a_idx++
+          ) {
+            tableData.push({
+              concept_name: concept_assoc[idx].name,
+              assoc_name: concept_assoc[idx].associations[a_idx].name,
+              relevance: concept_assoc[idx].associations[a_idx].relevance,
+              association_score:
+                concept_assoc[idx].associations[a_idx].association_score
+            }); // push
+          } // for assoc idx
+        } // for concepts idx
+        console.log("CONCEPT ASSOCIATIONS DONE len=" + tableData.length);
+        gtca_callback(tableData);
+      }); // get concepts callback
+
   }
 
   /**
@@ -737,6 +876,108 @@
       //console.log('metadata='+JSON.stringify(metadata));
       sf_callback(score_fields);
     });
+  }
+
+  /**
+   * Get all score drivers
+   *
+   * Description.
+   * this gets the metadata and the score drivers for all the different
+   * metadata values.
+   *
+   * @param {string} proj_api - The Luminoso Daylight project api
+   * @param {string} lumi_token - The Daylight token from the UI User Settings/API Tokens
+   * @param {function} gasf_callback - The function called after all drivers have been proessed
+   */  
+  function get_all_score_drivers(project_url, lumi_token, gasf_callback) {
+    get_score_fields(project_url, lumi_token, function(metadata) {
+      console.log("SUCCESS - got score fields");
+      sd_md_count = 0
+      var rows_complete = 0;
+      var rows_to_completion = 0
+      var tableData = [];
+
+      for (var md_idx = 0; md_idx < metadata.length; md_idx++) {
+        //console.log("md val = " + metadata[md_idx].name);
+        var sd_pt_data = {
+          md_idx: md_idx
+        }
+        get_score_drivers(
+          project_url,
+          lumi_token,
+          sd_pt_data,
+          metadata[md_idx]["name"],
+          process_score_drivers)
+          
+        function process_score_drivers(sd_data, sd_pt_data) {
+          
+            // add the current length to the number of rows that need to be completed
+            rows_to_completion += sd_data.length
+
+            // this is the actual data return
+            //console.log("gsd Callback from got_score_drivers");
+            //console.log("sd_data0="+JSON.stringify(sd_data[0]));
+
+            for (var idx = 0; idx < sd_data.length; idx++) {
+              // make a pt_data (pass_through) data object for each iteration
+              var td_pt_data = {
+                md_idx: sd_pt_data.md_idx,
+                metadata: metadata,
+                sd_data: sd_data,
+                idx: idx
+              };
+
+              // do a second fetch for some sample docs
+              get_three_docs(
+                project_url,
+                lumi_token,
+                td_pt_data,
+                sd_data[idx].texts,
+                function(td_pt_data, doc_data) {
+                  // console.log("3ds callback from get_three_docs");
+                  // console.log("pt_data idx="+pt_data.idx);
+                  console.log(
+                    "sd_data name = " + td_pt_data.sd_data[td_pt_data.idx].name
+                  );
+                  //if (pt_data.idx < 2) {
+                  //  console.log("doc=" + JSON.stringify(doc_data[0]));
+                  //}
+
+                  tableData.push({
+                    score_driver_name: td_pt_data.sd_data[td_pt_data.idx].name,
+                    score_field: td_pt_data.metadata[td_pt_data.md_idx].name,
+                    exact_matches:
+                      td_pt_data.sd_data[td_pt_data.idx].exact_match_count,
+                    conceptual_matches:
+                      td_pt_data.sd_data[td_pt_data.idx].match_count -
+                      td_pt_data.sd_data[td_pt_data.idx].exact_match_count,
+                    total_matches: td_pt_data.sd_data[td_pt_data.idx].match_count,
+                    impact: td_pt_data.sd_data[td_pt_data.idx].impact,
+                    confidence: td_pt_data.sd_data[td_pt_data.idx].confidence,
+                    relevance: td_pt_data.sd_data[td_pt_data.idx].relevance,
+                    importance: td_pt_data.sd_data[td_pt_data.idx].importance,
+                    sample_text_0: doc_data[0].text,
+                    sample_text_0_id: doc_data[0].doc_id,
+                    sample_text_1: doc_data[1].text,
+                    sample_text_1_id: doc_data[1].doc_id,
+                    sample_text_2: doc_data[2].text,
+                    sample_text_2_id: doc_data[2].doc_id
+                  });
+
+                  // count the number of rows returned
+                  rows_complete++;
+
+                  // append and callback when all rows are received
+                  if (rows_complete >= rows_to_completion) {
+                    console.log("final sd row count="+tableData.length)
+                    gasf_callback(tableData)
+                  }
+                }
+              ); // get three docs
+            } // for each sd result
+          } // process_score_drivers callback function
+      } // for each metadata score field
+    }); // get meta data
   }
 
   /**
@@ -945,179 +1186,18 @@
   }
 
   /**
-   * Get project match counts
+   * Get documents and metadata
    *
    * Description.
-   * Get the concept match counts
+   * This is the main functino that combines all the docs and metadata
+   * for output to the connector.
    *
    * @param {string} proj_api - the Daylight url
    * @param {string} lumi_token  - the security token from the UI User settings/API tokens
-   * @param {string} lumi_filter - a Luminoso filter dictionary
-   * @param {string} lumi_concept_selector - a Luminoso concept selector dictionary
-   * @param {Object} mc_pt_data - an object to pass through to the callback function
-   * @param {function} mc_callback - call back after the data is received
-   *
+   * @param {function} gdam_callback - callback with the table data when done
    */
-  function get_match_counts(
-    proj_api,
-    lumi_token,
-    lumi_filter,
-    lumi_concept_selector,
-    mc_pt_data,
-    mc_callback
-  ) {
-    // create the url object
-    var url = proj_api + "/concepts/match_counts";
+  function get_docs_and_metadata(project_url, lumi_token, gdam_callback) {
 
-    // console.log("match_count url=" + url);
-    // console.log("lumi_token=" + lumi_token);
-
-    // create the params for the match_counts call
-    var params = {};
-    if (lumi_filter != null) params["filter"] = JSON.stringify([lumi_filter]);
-    if (concept_selector != null)
-      params["concept_selector"] = JSON.stringify(lumi_concept_selector);
-
-    Object.keys(params).forEach(function(key) {
-      url = addParameterToURL(url.toString(), key, params[key]);
-    });
-
-    $.ajax({
-      url: url,
-      type: "GET",
-      dataType: "json",
-      success: function(resp_data) {
-        // console.log("match_counts SUCCESS");
-        // console.log("mc success= " + JSON.stringify(resp_data));
-        mc_callback(mc_pt_data, resp_data);
-      },
-      error: function(xhr, status, text) {
-        console.log("ERROR getting match_counts: " + status);
-        console.log("error text = " + text);
-
-        var response = $.parseJSON(xhr.responseText);
-        if (response) console.log(response.error);
-      },
-      beforeSend: setHeader
-    });
-
-    function setHeader(xhr) {
-      xhr.setRequestHeader("Authorization", "Token " + lumi_token);
-      xhr.setRequestHeader("lumi", "lumi-cors");
-    }
-  }
-
-  /**
-   * Tableau WDC calls the getData function when a user presses update
-   * The table name to retrieve is passed in the table_id
-   */
-  luminosoConnector.getData = function(table, doneCallback) {
-    tableau.log("GetData");
-    tableau.log("table_id=" + table["tableInfo"]["id"]);
-    console.log("Starting proxy fetch");
-
-    lumi_data = JSON.parse(tableau.connectionData);
-    console.log("connect data=" + lumi_data);
-
-    project_url = lumi_data.lumi_url;
-    lumi_token = lumi_data.lumi_token;
-
-    console.log("proj_url=" + project_url);
-
-    if (table["tableInfo"]["id"] == "score_drivers") {
-
-      get_score_fields(project_url, lumi_token, function(metadata) {
-        console.log("SUCCESS - got score fields");
-        sd_md_count = 0
-        var rows_complete = 0;
-        var rows_to_completion = 0
-        var tableData = [];
-
-        for (var md_idx = 0; md_idx < metadata.length; md_idx++) {
-          //console.log("md val = " + metadata[md_idx].name);
-          var sd_pt_data = {
-            md_idx: md_idx
-          }
-          get_score_drivers(
-            project_url,
-            lumi_token,
-            sd_pt_data,
-            metadata[md_idx]["name"],
-            process_score_drivers)
-            
-          function process_score_drivers(sd_data, sd_pt_data) {
-            
-              // add the current length to the number of rows that need to be completed
-              rows_to_completion += sd_data.length
-
-              // this is the actual data return
-              //console.log("gsd Callback from got_score_drivers");
-              //console.log("sd_data0="+JSON.stringify(sd_data[0]));
-
-              for (var idx = 0; idx < sd_data.length; idx++) {
-                // make a pt_data (pass_through) data object for each iteration
-                var td_pt_data = {
-                  md_idx: sd_pt_data.md_idx,
-                  metadata: metadata,
-                  sd_data: sd_data,
-                  idx: idx
-                };
-
-                // do a second fetch for some sample docs
-                get_three_docs(
-                  project_url,
-                  lumi_token,
-                  td_pt_data,
-                  sd_data[idx].texts,
-                  function(td_pt_data, doc_data) {
-                    // console.log("3ds callback from get_three_docs");
-                    // console.log("pt_data idx="+pt_data.idx);
-                    console.log(
-                      "sd_data name = " + td_pt_data.sd_data[td_pt_data.idx].name
-                    );
-                    //if (pt_data.idx < 2) {
-                    //  console.log("doc=" + JSON.stringify(doc_data[0]));
-                    //}
-
-                    tableData.push({
-                      score_driver_name: td_pt_data.sd_data[td_pt_data.idx].name,
-                      score_field: td_pt_data.metadata[td_pt_data.md_idx].name,
-                      exact_matches:
-                        td_pt_data.sd_data[td_pt_data.idx].exact_match_count,
-                      conceptual_matches:
-                        td_pt_data.sd_data[td_pt_data.idx].match_count -
-                        td_pt_data.sd_data[td_pt_data.idx].exact_match_count,
-                      total_matches: td_pt_data.sd_data[td_pt_data.idx].match_count,
-                      impact: td_pt_data.sd_data[td_pt_data.idx].impact,
-                      confidence: td_pt_data.sd_data[td_pt_data.idx].confidence,
-                      relevance: td_pt_data.sd_data[td_pt_data.idx].relevance,
-                      importance: td_pt_data.sd_data[td_pt_data.idx].importance,
-                      sample_text_0: doc_data[0].text,
-                      sample_text_0_id: doc_data[0].doc_id,
-                      sample_text_1: doc_data[1].text,
-                      sample_text_1_id: doc_data[1].doc_id,
-                      sample_text_2: doc_data[2].text,
-                      sample_text_2_id: doc_data[2].doc_id
-                    });
-
-                    // count the number of rows returned
-                    rows_complete++;
-
-                    // append and callback when all rows are received
-                    if (rows_complete >= rows_to_completion) {
-                      console.log("final sd row count="+tableData.length)
-                      table.appendRows(tableData);
-
-                      doneCallback();
-                    }
-                  }
-                ); // get three docs
-              } // for each sd result
-            } // process_score_drivers callback function
-        } // for each metadata score field
-      }); // get meta data
-    } // if score_drivers
-    else if (table["tableInfo"]["id"] == "docs") {
       // first get the metadata for the name mapping
       get_metadata(project_url, lumi_token, function(metadata) {
         console.log("SUCCESS - got metadata for skt");
@@ -1197,216 +1277,280 @@
 
               tableData.push(new_row);
             }
-            table.appendRows(tableData);
-            doneCallback();
+            gdam_callback(tableData)
           }); // get docs callback
         }); // get themes callback
       }); // metadata callback
-    } // if docs table
-    else if (table["tableInfo"]["id"] == "subset_key_terms") {
-      var tableData = [];
-      // first get all the metadata
-      get_metadata(project_url, lumi_token, function(metadata) {
-        console.log("SUCCESS - got metadata for skt");
-        // console.log("md[0] = " + JSON.stringify(metadata[0]));
 
-        // first build a list of metadata name->value key pairs to iterate
-        subset_terms = [];
-        for (var md_idx = 0; md_idx < metadata.length; md_idx++) {
-          // only use metadata subsets that have a list of values
-          if (metadata[md_idx].values != undefined) {
-            if (metadata[md_idx]["values"].length>200) {
-                console.log("too many values["+String(metadata[md_idx]["values"].length)+"] in subset: "+metadata[md_idx].name+"  using top 200")
-              }
-            //console.log("ss values = " + JSON.stringify(metadata[md_idx]));
-            // only take the top 200 subsets or calculations take way too long
-            for (
-              var ss_val_idx = 0;
-              ss_val_idx < Math.min(metadata[md_idx]["values"].length,200);
-              ss_val_idx++
-            ) {
-              new_row = {
-                subset_name: metadata[md_idx].name,
-                t_id: metadata[md_idx].t_id,
-                type: metadata[md_idx].type,
-                subset_value: metadata[md_idx]["values"][ss_val_idx]["value"],
-                count: metadata[md_idx]["values"][ss_val_idx]["count"]
-              };
-              //console.log("ssname="+new_row.subset_name+"  ss="+new_row.subset_value+"  count="+new_row.count)
-              subset_terms.push(new_row);
+  }
+
+  /**
+   * Get project match counts
+   *
+   * Description.
+   * Get the concept match counts
+   *
+   * @param {string} proj_api - the Daylight url
+   * @param {string} lumi_token  - the security token from the UI User settings/API tokens
+   * @param {string} lumi_filter - a Luminoso filter dictionary
+   * @param {string} lumi_concept_selector - a Luminoso concept selector dictionary
+   * @param {Object} mc_pt_data - an object to pass through to the callback function
+   * @param {function} mc_callback - call back after the data is received
+   *
+   */
+  function get_match_counts(
+    proj_api,
+    lumi_token,
+    lumi_filter,
+    lumi_concept_selector,
+    mc_pt_data,
+    mc_callback
+  ) {
+    // create the url object
+    var url = proj_api + "/concepts/match_counts";
+
+    // console.log("match_count url=" + url);
+    // console.log("lumi_token=" + lumi_token);
+
+    // create the params for the match_counts call
+    var params = {};
+    if (lumi_filter != null) params["filter"] = JSON.stringify([lumi_filter]);
+    if (concept_selector != null)
+      params["concept_selector"] = JSON.stringify(lumi_concept_selector);
+
+    Object.keys(params).forEach(function(key) {
+      url = addParameterToURL(url.toString(), key, params[key]);
+    });
+
+    $.ajax({
+      url: url,
+      type: "GET",
+      dataType: "json",
+      success: function(resp_data) {
+        // console.log("match_counts SUCCESS");
+        // console.log("mc success= " + JSON.stringify(resp_data));
+        mc_callback(mc_pt_data, resp_data);
+      },
+      error: function(xhr, status, text) {
+        console.log("ERROR getting match_counts: " + status);
+        console.log("error text = " + text);
+
+        var response = $.parseJSON(xhr.responseText);
+        if (response) console.log(response.error);
+      },
+      beforeSend: setHeader
+    });
+
+    function setHeader(xhr) {
+      xhr.setRequestHeader("Authorization", "Token " + lumi_token);
+      xhr.setRequestHeader("lumi", "lumi-cors");
+    }
+  }
+
+  function get_skt(project_url, lumi_token, gskt_callback) {
+    var tableData = [];
+    // first get all the metadata
+    get_metadata(project_url, lumi_token, function(metadata) {
+      console.log("SUCCESS - got metadata for skt");
+      // console.log("md[0] = " + JSON.stringify(metadata[0]));
+
+      // first build a list of metadata name->value key pairs to iterate
+      subset_terms = [];
+      for (var md_idx = 0; md_idx < metadata.length; md_idx++) {
+        // only use metadata subsets that have a list of values
+        if (metadata[md_idx].values != undefined) {
+          if (metadata[md_idx]["values"].length>200) {
+              console.log("too many values["+String(metadata[md_idx]["values"].length)+"] in subset: "+metadata[md_idx].name+"  using top 200")
             }
-          //console.log("len subset_terms["+metadata[md_idx].name+"]="+subset_terms.length)
+          //console.log("ss values = " + JSON.stringify(metadata[md_idx]));
+          // only take the top 200 subsets or calculations take way too long
+          for (
+            var ss_val_idx = 0;
+            ss_val_idx < Math.min(metadata[md_idx]["values"].length,200);
+            ss_val_idx++
+          ) {
+            new_row = {
+              subset_name: metadata[md_idx].name,
+              t_id: metadata[md_idx].t_id,
+              type: metadata[md_idx].type,
+              subset_value: metadata[md_idx]["values"][ss_val_idx]["value"],
+              count: metadata[md_idx]["values"][ss_val_idx]["count"]
+            };
+            //console.log("ssname="+new_row.subset_name+"  ss="+new_row.subset_value+"  count="+new_row.count)
+            subset_terms.push(new_row);
           }
+        //console.log("len subset_terms["+metadata[md_idx].name+"]="+subset_terms.length)
         }
+      }
 
-        // call get match_counts with zero index.
-        // this will be called again by get_three_docs callback with the next index
-        // once all the match_counts have been processed
-        //console.log("ss=" + JSON.stringify(subset_terms[0]));
-        filter = {
-          name: subset_terms[0].subset_name,
-          values: [subset_terms[0].subset_value]
-        };
-        selector_limit = 25;
-        if (subset_terms.length > 1000) selector_limit = 3;
-        else if (subset_terms.length > 500) selector_limit = 5;
-        else if (subset_terms.length > 200) selector_limit = 10;
-        else if (subset_terms.length > 100) selector_limit = 15;
+      // call get match_counts with zero index.
+      // this will be called again by get_three_docs callback with the next index
+      // once all the match_counts have been processed
+      //console.log("ss=" + JSON.stringify(subset_terms[0]));
+      filter = {
+        name: subset_terms[0].subset_name,
+        values: [subset_terms[0].subset_value]
+      };
+      selector_limit = 25;
+      if (subset_terms.length > 1000) selector_limit = 3;
+      else if (subset_terms.length > 500) selector_limit = 5;
+      else if (subset_terms.length > 200) selector_limit = 10;
+      else if (subset_terms.length > 100) selector_limit = 15;
 
-        mc_pt_data = { ss_idx: 0, selector_limit: selector_limit };
-        concept_selector = { type: "top", limit: mc_pt_data.selector_limit };
+      mc_pt_data = { ss_idx: 0, selector_limit: selector_limit };
+      concept_selector = { type: "top", limit: mc_pt_data.selector_limit };
 
-        get_match_counts(
-          project_url,
-          lumi_token,
-          filter,
-          concept_selector,
-          mc_pt_data,
-          process_match_counts
-        );
+      get_match_counts(
+        project_url,
+        lumi_token,
+        filter,
+        concept_selector,
+        mc_pt_data,
+        process_match_counts
+      );
 
-        function process_match_counts(mc_pt_data, match_counts) {
-          //console.log("GOT MATCH COUNTS_" + ss_name);
-          // console.log("GOT MATCH COUNTS_" + JSON.stringify(match_counts));
-          match_counts = match_counts["match_counts"];
-          //console.log("GOT MCLEN" + match_counts.length);
+      function process_match_counts(mc_pt_data, match_counts) {
+        //console.log("GOT MATCH COUNTS_" + ss_name);
+        // console.log("GOT MATCH COUNTS_" + JSON.stringify(match_counts));
+        match_counts = match_counts["match_counts"];
+        //console.log("GOT MCLEN" + match_counts.length);
 
-          if (match_counts.length>0) {
-            var mc_complete = 0;
+        if (match_counts.length>0) {
+          var mc_complete = 0;
 
-            for (var mc_idx = 0; mc_idx < match_counts.length; mc_idx++) {
-              pt_data = {
-                // mc_idx: 0,
-                subset_terms: subset_terms,
-                ss_idx: mc_pt_data.ss_idx,
-                mc_idx: mc_idx,
-                match_counts: match_counts
-              };
-              // do a second fetch for some sample docs
-              get_three_docs(
-                project_url,
-                lumi_token,
-                pt_data,
-                [pt_data.match_counts[pt_data.mc_idx].name],
-                process_three_docs
-              );
-            }
-          } else {
+          for (var mc_idx = 0; mc_idx < match_counts.length; mc_idx++) {
             pt_data = {
-              mc_idx: 0,
+              // mc_idx: 0,
               subset_terms: subset_terms,
               ss_idx: mc_pt_data.ss_idx,
+              mc_idx: mc_idx,
               match_counts: match_counts
             };
+            // do a second fetch for some sample docs
+            get_three_docs(
+              project_url,
+              lumi_token,
+              pt_data,
+              [pt_data.match_counts[pt_data.mc_idx].name],
+              process_three_docs
+            );
+          }
+        } else {
+          pt_data = {
+            mc_idx: 0,
+            subset_terms: subset_terms,
+            ss_idx: mc_pt_data.ss_idx,
+            match_counts: match_counts
+          };
 
+          next_or_done(pt_data)
+        }
+
+
+        function next_or_done(pt_data) {
+
+            // done with that match_count, now get the next subset
+            next_idx = pt_data.ss_idx += 1;
+            console.log(
+              "ss_idx " + next_idx + " of " + pt_data.subset_terms.length
+            );
+
+            // good for debugging - to see a quick skt output
+            // if (next_idx>10)
+            //  next_idx = pt_data.subset_terms.length
+
+            //console.log("next_idx: "+String(next_idx))
+            //console.log("<len ="+String(pt_data.subset_terms.length))
+            if (next_idx < pt_data.subset_terms.length) {
+              filter = {
+                name: pt_data.subset_terms[next_idx].subset_name,
+                values: [pt_data.subset_terms[next_idx].subset_value]
+              };
+              //console.log("selector_limit = "+mc_pt_data.selector_limit)
+              concept_selector = {
+                type: "top",
+                limit: mc_pt_data.selector_limit
+              };
+              mc_pt_data = {
+                ss_idx: next_idx,
+                selector_limit: mc_pt_data.selector_limit
+              };
+
+              get_match_counts(
+                project_url,
+                lumi_token,
+                filter,
+                concept_selector,
+                mc_pt_data,
+                process_match_counts
+              );
+            } else {
+              console.log("SKT DONE tdlen=" + tableData.length);
+              gskt_callback(tableData);
+            } // done with last subset
+        }
+        
+        function process_three_docs(pt_data, doc_data) {
+          //console.log("callback from get_three_docs");
+          //console.log("ptd subset=" + pt_data.subset_terms[pt_data.ss_idx].subset_name);
+          //console.log("subset_terms="+JSON.stringify(pt_data.subset_terms[pt_data.ss_idx]));
+          //console.log("docs="+JSON.stringify(doc_data))
+          if (doc_data.length > 0) {
+            doc_0 = doc_data[0].text;
+            doc_0_id = doc_data[0].doc_id;
+          } else {
+            doc_0 = undefined;
+            doc_0_id = undefined;
+          }
+          if (doc_data.length > 1) {
+            doc_1 = doc_data[1].text;
+            doc_1_id = doc_data[1].doc_id;
+          } else {
+            doc_1 = undefined;
+            doc_1_id = undefined;
+          }
+          if (doc_data.length > 2) {
+            doc_2 = doc_data[2].text;
+            doc_2_id = doc_data[2].doc_id;
+          } else {
+            doc_2 = undefined;
+            doc_2_id = undefined;
+          }
+
+          new_row = {
+            // remember tableau cannon handle metadata names with spaces, replace with t_id
+            subset_id:pt_data.subset_terms[pt_data.ss_idx].t_id,
+            subset_name: pt_data.subset_terms[pt_data.ss_idx].subset_name,
+            subset_value: pt_data.subset_terms[pt_data.ss_idx].subset_value,
+            term: pt_data.match_counts[pt_data.mc_idx].name,
+            exact_match:
+              pt_data.match_counts[pt_data.mc_idx].exact_match_count,
+            total_match: pt_data.match_counts[pt_data.mc_idx].match_count,
+            conceptual_match:
+              pt_data.match_counts[pt_data.mc_idx].match_count -
+              match_counts[pt_data.mc_idx].exact_match_count,
+            relevance: match_counts[pt_data.mc_idx].relevance,
+            sample_text_0: doc_0,
+            sample_text_0_id: doc_0_id,
+            sample_text_1: doc_1,
+            sample_text_1_id: doc_1_id,
+            sample_text_2: doc_2,
+            sample_text_2_id: doc_2_id
+          };
+          //console.log("ADDING NEW ROW = "+JSON.stringify(new_row))
+          tableData.push(new_row);
+
+          mc_complete++;
+          //console.log("mc_complete=" + mc_complete + " of " + pt_data.match_counts.length);
+          if (mc_complete >= pt_data.match_counts.length) {
             next_or_done(pt_data)
           }
+        } // process three docs callback;
+      } // process match counts callback
+    });
+  }
 
-
-          function next_or_done(pt_data) {
-
-              // done with that match_count, now get the next subset
-              next_idx = pt_data.ss_idx += 1;
-              console.log(
-                "ss_idx " + next_idx + " of " + pt_data.subset_terms.length
-              );
-
-              // good for debugging - to see a quick skt output
-              // if (next_idx>10)
-              //  next_idx = pt_data.subset_terms.length
-
-              //console.log("next_idx: "+String(next_idx))
-              //console.log("<len ="+String(pt_data.subset_terms.length))
-              if (next_idx < pt_data.subset_terms.length) {
-                filter = {
-                  name: pt_data.subset_terms[next_idx].subset_name,
-                  values: [pt_data.subset_terms[next_idx].subset_value]
-                };
-                //console.log("selector_limit = "+mc_pt_data.selector_limit)
-                concept_selector = {
-                  type: "top",
-                  limit: mc_pt_data.selector_limit
-                };
-                mc_pt_data = {
-                  ss_idx: next_idx,
-                  selector_limit: mc_pt_data.selector_limit
-                };
-
-                get_match_counts(
-                  project_url,
-                  lumi_token,
-                  filter,
-                  concept_selector,
-                  mc_pt_data,
-                  process_match_counts
-                );
-              } else {
-                console.log("SKT DONE tdlen=" + tableData.length);
-                table.appendRows(tableData);
-                doneCallback();
-              } // done with last subset
-          }
-          
-          function process_three_docs(pt_data, doc_data) {
-            //console.log("callback from get_three_docs");
-            //console.log("ptd subset=" + pt_data.subset_terms[pt_data.ss_idx].subset_name);
-            //console.log("subset_terms="+JSON.stringify(pt_data.subset_terms[pt_data.ss_idx]));
-            //console.log("docs="+JSON.stringify(doc_data))
-            if (doc_data.length > 0) {
-              doc_0 = doc_data[0].text;
-              doc_0_id = doc_data[0].doc_id;
-            } else {
-              doc_0 = undefined;
-              doc_0_id = undefined;
-            }
-            if (doc_data.length > 1) {
-              doc_1 = doc_data[1].text;
-              doc_1_id = doc_data[1].doc_id;
-            } else {
-              doc_1 = undefined;
-              doc_1_id = undefined;
-            }
-            if (doc_data.length > 2) {
-              doc_2 = doc_data[2].text;
-              doc_2_id = doc_data[2].doc_id;
-            } else {
-              doc_2 = undefined;
-              doc_2_id = undefined;
-            }
-
-            new_row = {
-              // remember tableau cannon handle metadata names with spaces, replace with t_id
-              subset_id:pt_data.subset_terms[pt_data.ss_idx].t_id,
-              subset_name: pt_data.subset_terms[pt_data.ss_idx].subset_name,
-              subset_value: pt_data.subset_terms[pt_data.ss_idx].subset_value,
-              term: pt_data.match_counts[pt_data.mc_idx].name,
-              exact_match:
-                pt_data.match_counts[pt_data.mc_idx].exact_match_count,
-              total_match: pt_data.match_counts[pt_data.mc_idx].match_count,
-              conceptual_match:
-                pt_data.match_counts[pt_data.mc_idx].match_count -
-                match_counts[pt_data.mc_idx].exact_match_count,
-              relevance: match_counts[pt_data.mc_idx].relevance,
-              sample_text_0: doc_0,
-              sample_text_0_id: doc_0_id,
-              sample_text_1: doc_1,
-              sample_text_1_id: doc_1_id,
-              sample_text_2: doc_2,
-              sample_text_2_id: doc_2_id
-            };
-            //console.log("ADDING NEW ROW = "+JSON.stringify(new_row))
-            tableData.push(new_row);
-
-            mc_complete++;
-            //console.log("mc_complete=" + mc_complete + " of " + pt_data.match_counts.length);
-            if (mc_complete >= pt_data.match_counts.length) {
-              next_or_done(pt_data)
-            }
-          } // process three docs callback;
-        } // process match counts callback
-      });
-    } // subset key terms table
-    else if (table["tableInfo"]["id"] == "subsets") {
+  function get_subset_info(project_url, lumi_token, gsi_callback) {
       // get all the metadata
       get_metadata(project_url, lumi_token, function(metadata) {
         console.log("SUCCESS - got metadata for subsets");
@@ -1426,112 +1570,69 @@
         } // for metadata list
 
         console.log("SUBSETS DONE tdlen=" + tableData.length);
-        table.appendRows(tableData);
-        doneCallback();
+        gsi_callback(tableData);
       }); // subsets get metadata callback
+  }
+  /**
+   * Tableau WDC calls the getData function when a user presses update
+   * The table name to retrieve is passed in the table_id
+   */
+  luminosoConnector.getData = function(table, doneCallback) {
+    tableau.log("GetData");
+    tableau.log("table_id=" + table["tableInfo"]["id"]);
+    console.log("Starting proxy fetch");
+
+    lumi_data = JSON.parse(tableau.connectionData);
+    console.log("connect data=" + lumi_data);
+
+    project_url = lumi_data.lumi_url;
+    lumi_token = lumi_data.lumi_token;
+
+    console.log("proj_url=" + project_url);
+
+    if (table["tableInfo"]["id"] == "score_drivers") {
+      get_all_score_drivers(project_url, lumi_token, function(table_data) {
+
+      table.appendRows(table_data);
+      doneCallback();
+      })
+
+    } // if score_drivers
+    else if (table["tableInfo"]["id"] == "docs") {
+      get_docs_and_metadata(project_url, lumi_token, function(table_data){
+        table.appendRows(table_data);
+        doneCallback();
+      })
+    } // if docs table
+    else if (table["tableInfo"]["id"] == "subset_key_terms") {
+      get_skt(project_url, lumi_token, function(skt_data){
+        table.appendRows(skt_data);
+        doneCallback();
+      })
+    } // subset key terms table
+    else if (table["tableInfo"]["id"] == "subsets") {
+      get_subset_info(project_url, lumi_token, function(subset_table){
+        table.appendRows(subset_table);
+        doneCallback();
+      })
     } // subsets table
     else if (table["tableInfo"]["id"] == "top_concepts_assoc") {
-      // get all the metadata
-      get_concept_associations(project_url, lumi_token, "top", function(
-        concept_assoc
-      ) {
-        console.log("SUCCESS - got assoc data");
-        //console.log("concept_assoc[0] = " + JSON.stringify(concept_assoc[0]));
-        console.log("num concepts=" + concept_assoc.length);
-        var tableData = [];
-        for (var idx = 0; idx < concept_assoc.length; idx++) {
-          for (
-            var a_idx = 0;
-            a_idx < concept_assoc[idx].associations.length;
-            a_idx++
-          ) {
-            tableData.push({
-              concept_name: concept_assoc[idx].name,
-              assoc_name: concept_assoc[idx].associations[a_idx].name,
-              relevance: concept_assoc[idx].associations[a_idx].relevance,
-              association_score:
-                concept_assoc[idx].associations[a_idx].association_score
-            }); // push
-          } // for assoc idx
-        } // for concepts idx
-        console.log("CONCEPT ASSOCIATIONS DONE len=" + tableData.length);
-        table.appendRows(tableData);
+      get_top_concept_assoc(project_url, lumi_token, function(concept_assoc){
+        table.appendRows(concept_assoc);
         doneCallback();
-      }); // get concepts callback
+      })
     } // if top_concepts_assoc
     else if (table["tableInfo"]["id"] == "themes") {
-      // get all the metadata
-      get_themes(project_url, lumi_token, function(theme_data) {
-        //console.log("SUCCESS - got theme data");
-        console.log("num theme concepts=" + theme_data.length);
-        //console.log("theme_data0 = "+JSON.stringify(theme_data));
-        var tableData = [];
-        var cluster_labels = theme_data['cluster_labels'];
-
-        //console.log("THEMES cluseter_labels=" + JSON.stringify(cluster_labels));
-        var clusters_complete = 0;
-        for (var c_key in cluster_labels) {
-          filter = {};
-          concept_selector = {
-            type: "specified",
-            concepts: [{ texts: cluster_labels[c_key].concepts }]
-          };
-          mc_pt_data = {
-            c_key: c_key,
-            cluster_labels: cluster_labels
-          };
-          get_match_counts(
-            project_url,
-            lumi_token,
-            null,
-            concept_selector,
-            mc_pt_data,
-            function(pt_data, match_counts) {
-              console.log("mc_callback for key=" + pt_data.c_key);
-              new_row = {
-                cluster_label: pt_data.cluster_labels[pt_data.c_key].name,
-                concepts: pt_data.cluster_labels[pt_data.c_key].concepts.join(
-                  ","
-                ),
-                theme_id: pt_data.cluster_labels[pt_data.c_key].theme_id
-              };
-              count = 0;
-              for (
-                var mc_idx = 0;
-                mc_idx < match_counts["match_counts"].length;
-                mc_idx++
-              ) {
-                count += match_counts["match_counts"][mc_idx].exact_match_count;
-              }
-              new_row["match_count"] = count;
-              tableData.push(new_row); // push
-
-              clusters_complete += 1;
-              if (
-                clusters_complete >= Object.keys(pt_data.cluster_labels).length
-              ) {
-                console.log("THEMES DONE len=" + tableData.length);
-                table.appendRows(tableData);
-                doneCallback();
-              }
-            }
-          ); // get_match_counts callback
-        } // for c_key cluster_labels
-      }); // get concepts callback
+      get_themes_and_counts(project_url, lumi_token, function(theme_data){
+        table.appendRows(theme_data);
+        doneCallback();
+      })
     } // if top_concepts_assoc
     else if (table["tableInfo"]["id"] == "md_mapping") {
-      // get all the metadata
-      get_metadata(project_url, lumi_token, function(metadata) {
-        var tableData = [];
-        for (var idx = 0; idx < metadata.length; idx++) {
-          tableData.push({
-            metadata_id: metadata[idx].t_id,
-            name: metadata[idx].name
-          }); // push
-        } // for metadata idx
-        table.appendRows(tableData);
+      get_metadata_mapping(project_url, lumi_token, function(md_mapping){
+        table.appendRows(md_mapping);
         doneCallback();
-      });
+      })
     }
   }; // getData
 
@@ -1552,11 +1653,11 @@ $(document).ready(function() {
     // lumi_url_tmp = "https://analytics.luminoso.com/app/projects/p87t862f/prk3wg56"
     // lumi_url_tmp = "https://analytics.luminoso.com/app/projects/p87t862f/pr35fd6m"
     // lumi_url_tmp = "https://analytics.luminoso.com/app/projects/m76u733n/prn85rp4?suggesting=false"
-    // lumi_token_tmp = "ZIFzhC-QaHKxo7SqpgqHix0-bgosKPVD";
+    // lumi_token_tmp = "5kvQ1i8eQagQVE4se_k3BiLWvOV1MfS1";
     // lumi_url_tmp = "http://localhost:8889/analytics.luminoso.com/app/projects/p87t862f/prk3wg56"
     // lumi_url_tmp = "https://analytics.luminoso.com/app/projects/p87t862f/prk3wg56"
-    // lumi_url_tmp =
-    //  "https://analytics.luminoso.com/app/projects/p87t862f/prsfdrn2";
+    // lumi_url_tmp = // simple kf project
+    //   "https://analytics.luminoso.com/app/projects/p87t862f/prsfdrn2";
     // lumi_url_tmp = "https://analytics.luminoso.com/app/projects/u22n473c/prgsqc5b"
     // lumi_token_tmp = "fGpZVIxEGxtRhd6CrnWRABt9oWv3890U"
     // lumi_url_tmp =
