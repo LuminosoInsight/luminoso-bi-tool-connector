@@ -493,7 +493,7 @@ $(document).ready(function() {
     // if lumi_token isn't set, then probably came through the username way
     if (!lumi_token_tmp) {
       if (lumi_username_tmp) {
-        lumi_login(api_v4_url, lumi_username_tmp, lumi_password_tmp, function(
+        luminoso.lumi_login(api_v4_url, lumi_username_tmp, lumi_password_tmp, function(
           token
         ) {
           tableau.log("GOT THE TOKEN!!!!");
@@ -537,74 +537,4 @@ $(document).ready(function() {
     tableau.log("a SUBMIT PRESSED!!");
   } // tableau submit
 
-  /**
-   * Login to Luminoso Daylight and receive a token
-   *
-   * Description
-   * This uses a v4 endpoint to login to the Daylight server and get a token.
-   * The token will be used for the rest of the connections
-   *
-   * @param {*} proj_api_v4 | Login requires a v4 endpoint
-   * @param {*} lumi_loginid | The login id
-   * @param {*} lumi_password | The password the user typed at the prompt
-   * @param {*} login_callback | The callback when this async function is called
-   */
-  function lumi_login(
-    proj_api_v4,
-    lumi_loginid,
-    lumi_password,
-    login_callback
-  ) {
-    tableau.log("LOGIN START...");
-
-    // create the url object
-    var url = proj_api_v4 + "/user/login/";
-    var params = {
-      username: lumi_loginid,
-      password: lumi_password
-    };
-    tableau.log("login url=" + url);
-
-    $.ajax({
-      url: url,
-      type: "POST",
-      dataType: "json",
-      data: params,
-      success: function(resp_data) {
-        tableau.log("login SUCCESS");
-        tableau.log("login response = " + resp_data);
-        login_callback(resp_data["result"]["token"]);
-      },
-      error: function(xhr, status, text) {
-        tableau.log("ERROR on login: " + status);
-        tableau.log("error text = " + text);
-        tableau.log("full error =" + JSON.stringify(xhr));
-
-        var response = $.parseJSON(xhr.responseText);
-        if (response) tableau.log(response.error);
-      },
-      beforeSend: setHeader
-    });
-
-    function setHeader(xhr) {
-      xhr.setRequestHeader("lumi", "lumi-cors");
-    }
-
-    function addParameterToURL(url, param, value) {
-      // console.log("addparam url=" + url);
-      tableau.log(
-        "encode of value for " +
-          String(param) +
-          " = " +
-          String(encodeURIComponent(value))
-      );
-      url =
-        url +
-        (url.split("?")[1] ? "&" : "?") +
-        param +
-        "=" +
-        encodeURIComponent(value);
-      return url;
-    }
-  }
 }); // document ready
