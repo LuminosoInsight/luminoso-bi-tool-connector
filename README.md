@@ -1,4 +1,8 @@
-## Luminoso Tableau Web Data Connector
+## Luminoso Business Intelligence Connector
+
+**ALPHA** this repository contains connectors for business intelligence tools connecting to Luminoso.
+
+## Tableau Web Data Connector
 
 **ALPHA** this connector is currently alpha and only useful for testing purposes. Use at own risk.
 >> This readme hosted at: [https://luminosoinsight.github.io/luminoso-bi-tool-connector/](https://luminosoinsight.github.io/luminoso-bi-tool-connector/)
