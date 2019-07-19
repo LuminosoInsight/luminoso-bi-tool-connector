@@ -123,29 +123,39 @@
 
         // create a mapping from metadata.name to t_id
         resp_data.result["name_mapping"] = {};
+        resp_data.result["name_mapping_id"] = {};
 
         // Tableau wdc can only handle ids with these characters.
         // if any others are in the name, use a naming designation
         var re_valid_id = new RegExp("^[a-zA-Z0-9_]*$");
         for (var idx = 0; idx < resp_data.result.length; idx++) {
+          resp_data.result[idx].md_map_id = "Metadata" + idx;
           if (re_valid_id.exec(resp_data.result[idx].name)) {
             resp_data.result[idx].t_id = resp_data.result[idx].name;
           } else {
             resp_data.result[idx].t_id = "Metadata" + idx;
-            resp_data.result.has_id_mapping = true;
           }
+          // always make the mapping - this is a change from the original
+          resp_data.result.has_id_mapping = true;
           resp_data.result.name_mapping[resp_data.result[idx].name] =
+            resp_data.result[idx].t_id;          
+          resp_data.result.name_mapping_id[resp_data.result[idx].md_map_id] =
             resp_data.result[idx].t_id;
         }
 
         md_callback(resp_data.result);
       },
       error: function(xhr, status, text) {
+
         console.log("ERROR getting metadata: " + status);
         console.log("error text = " + text);
-
-        var response = $.parseJSON(xhr.responseText);
-        if (response) console.log(response.error);
+        console.log("xhr="+xhr.responseText);
+        var err = JSON.parse(xhr.responseText);
+        //eval("(" + xhr.responseText + ")");
+        if (err) {
+          console.log(err.error);
+          console.log(err.Message);
+        }      
       },
       beforeSend: setHeader
     });
@@ -975,6 +985,7 @@
                   new_row[
                     metadata.name_mapping[doc_table[d_idx].metadata[md_idx].name]
                   ] = doc_table[d_idx].metadata[md_idx].value;
+                  new_row['md_name_id'] = doc_table[d_idx].md_map_id;
                 }
               }
 
