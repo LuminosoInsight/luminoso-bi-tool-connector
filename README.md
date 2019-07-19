@@ -31,7 +31,7 @@ This web data connector is designed to create a simple interface between Tableau
 
 > The tables from the project will show on the Tables pane.
 
-> 7. Drage Score Drivers to the Data Pane.
+> 7. Drag Score Drivers to the Data Pane.
 
 > 8. Click Update Now
 
@@ -45,22 +45,3 @@ Current Tables:
  - concept_associations_table
  - themes_table
  - md_mapping - if non-English/special character subset names
-
-Change History:
- - Version 0.5.2
-   - Fixed issues with non-English subset names
- - Version 0.5.1
-   - Improved themes table output
- - Version 0.5.0
-   - Themes table
- - Version 0.4.1
-   - Subset key terms performance improvement
- - Version 0.4.0
-   - Concepts Associations Table
-   - Subsets Table
- - Version 0.3.0
-   - Subset key terms table - without odds and p_value
-- Version 0.2.0
-   - Added doc_table
-- Version 0.1.0
-   - Initial release - score_drivers table
