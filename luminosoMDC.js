@@ -228,7 +228,7 @@
     } // subset_key_terms
     else if (tableSchema.tableName=="subsets") {
 
-      // Schema for score_driver table
+      // Schema for subsets table
       var subsets_cols = [
         {
           id: "subset_id",
@@ -322,11 +322,11 @@
     }
 
     // DEBUG: use a hard coded token/project
-    // lumi_token_tmp = "uG84D_a0eJfp49WAx8uWUgM174VQ";
+     lumi_token_tmp = "r8mNbpq9Q98233rcz9eRkCWV4utsrJ7j";
     // lumi_url_tmp = "http://localhost:8889/analytics.luminoso.com/app/projects/p87t862f/prk3wg56"
     // lumi_url_tmp = "https://analytics.luminoso.com/app/projects/p87t862f/prk3wg56"
-    // lumi_url_tmp = // simple kf project
-    //   "https://analytics.luminoso.com/app/projects/p87t862f/prsfdrn2";
+     lumi_url_tmp = // simple kf project
+       "https://analytics.luminoso.com/app/projects/p87t862f/prsfdrn2";
 
         // clean the url
     // remove anything after a ?
@@ -397,7 +397,6 @@
       luminoso.get_all_score_drivers(project_url, lumi_token, function(table_data) {
 
         console.log("Score driver data received.")
-        console.log(JSON.stringify(table_data))
         table.appendFormattedData(table_data);
     
         doneCallback(table);        
