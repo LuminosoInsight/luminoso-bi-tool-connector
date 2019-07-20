@@ -62,7 +62,7 @@
     lumi_password,
     login_callback
   ) {
-    tableau.log("LOGIN START...");
+    console.log("LOGIN START...");
 
     // create the url object
     var url = proj_api_v4 + "/user/login/";
@@ -70,7 +70,7 @@
       username: lumi_loginid,
       password: lumi_password
     };
-    tableau.log("login url=" + url);
+    console.log("login url=" + url);
 
     $.ajax({
       url: url,
@@ -78,17 +78,17 @@
       dataType: "json",
       data: params,
       success: function(resp_data) {
-        tableau.log("login SUCCESS");
-        tableau.log("login response = " + resp_data);
+        console.log("login SUCCESS");
+        console.log("login response = " + resp_data);
         login_callback(resp_data["result"]["token"]);
       },
       error: function(xhr, status, text) {
-        tableau.log("ERROR on login: " + status);
-        tableau.log("error text = " + text);
-        tableau.log("full error =" + JSON.stringify(xhr));
+        console.log("ERROR on login: " + status);
+        console.log("error text = " + text);
+        console.log("full error =" + JSON.stringify(xhr));
 
         var response = $.parseJSON(xhr.responseText);
-        if (response) tableau.log(response.error);
+        if (response) console.log(response.error);
       },
       beforeSend: setHeader
     });

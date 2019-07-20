@@ -299,94 +299,10 @@
 
   } // setTableSchema
 
-  // Connector must define fetchTable function
-  myConnector.fetchTable = function(table, params, doneCallback) {
-    console.log("FETCH TABLE!")
-
-    // params represents information sent by connector to MSTR at interactive phase
-    var mstrParams = JSON.parse(params);
-    console.log("url = "+mstrParams["lumi-project-url"]);
-
-    lumi_url_tmp = mstrParams["lumi-project-url"];
-    var lumi_token_tmp;
-    var lumi_username_tmp;
-    var lumi_password_tmp;
-    if ('luminoso-token' in mstrParams) {
-      lumi_token_tmp = mstrParams['luminoso-token'];
-    }
-    if ('luminoso0username' in mstrParams) {
-      lumi_username_tmp = mstrParams['luminoso-username'];
-    }
-    if ('luminoso-password' in mstrParams) {
-      lumi_password_tmp = mstrParams['luminoso-password'];
-    }
-
-    // DEBUG: use a hard coded token/project
-    // lumi_token_tmp = "r8mNbpq9Q98233rcz9eRkCWV4utsrJ7j";
-    // lumi_url_tmp = "http://localhost:8889/analytics.luminoso.com/app/projects/p87t862f/prk3wg56"
-    // lumi_url_tmp = "https://analytics.luminoso.com/app/projects/p87t862f/prk3wg56"
-    // lumi_url_tmp = // simple kf project
-    //   "https://analytics.luminoso.com/app/projects/p87t862f/prsfdrn2";
-
-        // clean the url
-    // remove anything after a ?
-    if (lumi_url_tmp.indexOf('?')>-1)
-      {
-      lumi_url_tmp = lumi_url_tmp.substring(0, lumi_url_tmp.indexOf('?'));
-      }
-    console.log("url = "+lumi_url_tmp);
-
-    // convert an app url into an api url
-    project_url = lumi_url_tmp;
-    api_url = project_url.split("/app")[0] + "/api/v5";
-    api_v4_url = project_url.split("/app")[0] + "/api/v4";
-
-    // second url cleaning, remove anything past the project_id
-    url_arr = project_url.split("/").slice(0,7);
-    
-    project_id = url_arr[url_arr.length - 1];
-    account_id = url_arr[url_arr.length - 2];
-    proj_apiv4 = api_url + "/projects/" + account_id + "/" + project_id;
-    proj_apiv5 = api_url + "/projects/" + project_id;
-
-    // prepend the cors proxy until this is hosted on luminoso.com
-    // proxy_url = "https://cors-anywhere.herokuapp.com/";
-    // proxy_url = "http://localhost:8080/";
-    var proxy_url = "https://morning-anchorage-77576.herokuapp.com/";
-    // var proxy_url = "";   // for hosting on luminoso.com don't use the proxy
-    api_url = proxy_url + api_url;
-    api_v4_url = proxy_url + api_v4_url;
-    proj_apiv5 = proxy_url + proj_apiv5;
-    proj_apiv4 = proxy_url + proj_apiv4;
-
-    // if lumi_token isn't set, then probably came through the username way
-    var lumi_token;
-    if (!lumi_token_tmp) {
-      if (lumi_username_tmp) {
-        lumi_login(api_v4_url, lumi_username_tmp, lumi_password_tmp, function(
-          token
-        ) {
-          console.log("GOT THE TOKEN!!!!");
-          console.log("token=" + JSON.stringify(token));
-          lumi_token = token;
-        });
-      } else {
-        console.log("ERROR no token and no username. One or other must be set");
-      }
-    }
-    else {
-      lumi_token = lumi_token_tmp;
-    }
-
-    var lumi_data = {
-      lumi_url: proj_apiv5,
-      lumi_token: lumi_token
-    };
-    // if this looks strange, trying to mimic the tableau version a little
+  function getData(table, lumi_data, doneCallback)
+  {
     project_url = lumi_data.lumi_url;
     lumi_token = lumi_data.lumi_token;
-
-    var tableData=[];
 
     setTableSchema(table.tableSchema,project_url, lumi_token);
 
@@ -443,6 +359,99 @@
       doneCallback([])
     }
 
+  }
+
+  // Connector must define fetchTable function
+  myConnector.fetchTable = function(table, params, doneCallback) {
+    console.log("FETCH TABLE!")
+
+    // params represents information sent by connector to MSTR at interactive phase
+    var mstrParams = JSON.parse(params);
+    console.log("url = "+mstrParams["lumi-project-url"]);
+    lumi_url_tmp = mstrParams["lumi-project-url"];
+    var lumi_token_tmp;
+    var lumi_username_tmp;
+    var lumi_password_tmp;
+    if ('luminoso-token' in mstrParams) {
+      lumi_token_tmp = mstrParams['luminoso-token'];
+    }
+    if ('luminoso-username' in mstrParams) {
+      lumi_username_tmp = mstrParams['luminoso-username'];
+    }
+    if ('luminoso-password' in mstrParams) {
+      lumi_password_tmp = mstrParams['luminoso-password'];
+    }
+
+    // DEBUG: use a hard coded token/project
+    // lumi_token_tmp = "r8mNbpq9Q98233rcz9eRkCWV4utsrJ7j";
+    // lumi_url_tmp = "http://localhost:8889/analytics.luminoso.com/app/projects/p87t862f/prk3wg56"
+    // lumi_url_tmp = "https://analytics.luminoso.com/app/projects/p87t862f/prk3wg56"
+    // lumi_url_tmp = // simple kf project
+    //   "https://analytics.luminoso.com/app/projects/p87t862f/prsfdrn2";
+
+        // clean the url
+    // remove anything after a ?
+    if (lumi_url_tmp.indexOf('?')>-1)
+      {
+      lumi_url_tmp = lumi_url_tmp.substring(0, lumi_url_tmp.indexOf('?'));
+      }
+    console.log("url = "+lumi_url_tmp);
+
+    // convert an app url into an api url
+    project_url = lumi_url_tmp;
+    api_url = project_url.split("/app")[0] + "/api/v5";
+    api_v4_url = project_url.split("/app")[0] + "/api/v4";
+
+    // second url cleaning, remove anything past the project_id
+    url_arr = project_url.split("/").slice(0,7);
+    
+    project_id = url_arr[url_arr.length - 1];
+    account_id = url_arr[url_arr.length - 2];
+    proj_apiv4 = api_url + "/projects/" + account_id + "/" + project_id;
+    proj_apiv5 = api_url + "/projects/" + project_id;
+
+    // prepend the cors proxy until this is hosted on luminoso.com
+    // proxy_url = "https://cors-anywhere.herokuapp.com/";
+    // proxy_url = "http://localhost:8080/";
+    var proxy_url = "https://morning-anchorage-77576.herokuapp.com/";
+    // var proxy_url = "";   // for hosting on luminoso.com don't use the proxy
+    api_url = proxy_url + api_url;
+    api_v4_url = proxy_url + api_v4_url;
+    proj_apiv5 = proxy_url + proj_apiv5;
+    proj_apiv4 = proxy_url + proj_apiv4;
+
+    // if lumi_token isn't set, then probably came through the username way
+    var lumi_token;
+    if (!lumi_token_tmp) {
+      console.log("check login user: "+lumi_username_tmp);
+      if (lumi_username_tmp) {
+        console.log("got pass, attempting login");
+        luminoso.lumi_login(api_v4_url, lumi_username_tmp, lumi_password_tmp, function(
+          token
+        ) {
+          console.log("GOT THE TOKEN!!!!");
+          console.log("token=" + JSON.stringify(token));
+          lumi_token = token;
+
+          var lumi_data = {
+            lumi_url: proj_apiv5,
+            lumi_token: lumi_token
+          };
+          getData(table,lumi_data,doneCallback);
+        });
+      } else {
+        console.log("ERROR no token and no username. One or other must be set");
+      }
+    }
+    else {
+      lumi_token = lumi_token_tmp;
+    }
+
+    var lumi_data = {
+      lumi_url: proj_apiv5,
+      lumi_token: lumi_token
+    };
+   getData(table,lumi_data,doneCallback);
   };
   // validateDataConnector does a validation check of the connector
   mstr.validateDataConnector(myConnector);
