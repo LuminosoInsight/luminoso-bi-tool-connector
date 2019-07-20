@@ -322,11 +322,11 @@
     }
 
     // DEBUG: use a hard coded token/project
-     lumi_token_tmp = "r8mNbpq9Q98233rcz9eRkCWV4utsrJ7j";
+    // lumi_token_tmp = "r8mNbpq9Q98233rcz9eRkCWV4utsrJ7j";
     // lumi_url_tmp = "http://localhost:8889/analytics.luminoso.com/app/projects/p87t862f/prk3wg56"
     // lumi_url_tmp = "https://analytics.luminoso.com/app/projects/p87t862f/prk3wg56"
-     lumi_url_tmp = // simple kf project
-       "https://analytics.luminoso.com/app/projects/p87t862f/prsfdrn2";
+    // lumi_url_tmp = // simple kf project
+    //   "https://analytics.luminoso.com/app/projects/p87t862f/prsfdrn2";
 
         // clean the url
     // remove anything after a ?
