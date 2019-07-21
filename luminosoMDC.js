@@ -383,11 +383,11 @@
     }
 
     // DEBUG: use a hard coded token/project
-    // lumi_token_tmp = "r8mNbpq9Q98233rcz9eRkCWV4utsrJ7j";
+    lumi_token_tmp = "r8mNbpq9Q98233rcz9eRkCWV4utsrJ7j";
     // lumi_url_tmp = "http://localhost:8889/analytics.luminoso.com/app/projects/p87t862f/prk3wg56"
     // lumi_url_tmp = "https://analytics.luminoso.com/app/projects/p87t862f/prk3wg56"
-    // lumi_url_tmp = // simple kf project
-    //   "https://analytics.luminoso.com/app/projects/p87t862f/prsfdrn2";
+    lumi_url_tmp = // simple kf project
+       "https://analytics.luminoso.com/app/projects/p87t862f/prjsvn3x";
 
         // clean the url
     // remove anything after a ?
@@ -470,8 +470,8 @@ $(document).ready(function() {
 
     // MUST define tableList field. Can import multiple tables in one connection.
     mstr.tableList = [];
-    mstr.tableList.push({tableName: "score_drivers"});
-    mstr.tableList.push({tableName: "docs"});
+    //mstr.tableList.push({tableName: "score_drivers"});
+    //mstr.tableList.push({tableName: "docs"});
     mstr.tableList.push({tableName: "subset_key_terms"});
     mstr.tableList.push({tableName: "subsets"});
     mstr.tableList.push({tableName: "top_concepts_assoc"});
