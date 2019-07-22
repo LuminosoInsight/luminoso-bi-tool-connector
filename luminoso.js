@@ -448,12 +448,12 @@
       type: "GET",
       dataType: "json",
       success: function(resp_data) {
-        console.log("concept assoc=" + JSON.stringify(resp_data));
+        //console.log("concept assoc=" + JSON.stringify(resp_data));
 
         concepts_callback(resp_data);
       },
       error: function(xhr, status, text) {
-        console.log("ERROR getting metadata: " + status);
+        console.log("ERROR getting concept assoc: " + status);
         console.log("error text = " + text);
 
         var response = $.parseJSON(xhr.responseText);
@@ -681,24 +681,24 @@
                   //}
 
                   tableData.push({
-                    score_driver_name: td_pt_data.sd_data[td_pt_data.idx].name,
-                    score_field: td_pt_data.metadata[td_pt_data.md_idx].name,
-                    exact_matches:
+                    "score_driver_name": td_pt_data.sd_data[td_pt_data.idx].name,
+                    "score_field": td_pt_data.metadata[td_pt_data.md_idx].name,
+                    "exact_matches":
                       td_pt_data.sd_data[td_pt_data.idx].exact_match_count,
-                    conceptual_matches:
+                    "conceptual_matches":
                       td_pt_data.sd_data[td_pt_data.idx].match_count -
                       td_pt_data.sd_data[td_pt_data.idx].exact_match_count,
-                    total_matches: td_pt_data.sd_data[td_pt_data.idx].match_count,
-                    impact: td_pt_data.sd_data[td_pt_data.idx].impact,
-                    confidence: td_pt_data.sd_data[td_pt_data.idx].confidence,
-                    relevance: td_pt_data.sd_data[td_pt_data.idx].relevance,
-                    importance: td_pt_data.sd_data[td_pt_data.idx].importance,
-                    sample_text_0: doc_data[0].text,
-                    sample_text_0_id: doc_data[0].doc_id,
-                    sample_text_1: doc_data[1].text,
-                    sample_text_1_id: doc_data[1].doc_id,
-                    sample_text_2: doc_data[2].text,
-                    sample_text_2_id: doc_data[2].doc_id
+                    "total_matches": td_pt_data.sd_data[td_pt_data.idx].match_count,
+                    "impact": td_pt_data.sd_data[td_pt_data.idx].impact,
+                    "confidence": td_pt_data.sd_data[td_pt_data.idx].confidence,
+                    "relevance": td_pt_data.sd_data[td_pt_data.idx].relevance,
+                    "importance": td_pt_data.sd_data[td_pt_data.idx].importance,
+                    "sample_text_0": doc_data[0].text,
+                    "sample_text_0_id": doc_data[0].doc_id,
+                    "sample_text_1": doc_data[1].text,
+                    "sample_text_1_id": doc_data[1].doc_id,
+                    "sample_text_2": doc_data[2].text,
+                    "sample_text_2_id": doc_data[2].doc_id
                   });
 
                   // count the number of rows returned
@@ -707,6 +707,7 @@
                   // append and callback when all rows are received
                   if (rows_complete >= rows_to_completion) {
                     console.log("final sd row count="+tableData.length)
+
                     gasf_callback(tableData)
                   }
                 }
