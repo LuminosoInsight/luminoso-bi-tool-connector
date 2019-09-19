@@ -646,7 +646,7 @@
           metadata[md_idx]["name"],
           process_score_drivers)
           
-        function process_score_drivers(sd_data, sd_pt_data) {
+        process_score_drivers = function(sd_data, sd_pt_data) {
           
             // add the current length to the number of rows that need to be completed
             rows_to_completion += sd_data.length
